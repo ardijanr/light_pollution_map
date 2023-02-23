@@ -1,0 +1,12 @@
+FROM docker.io/fedora:37 AS stage0
+
+RUN dnf install -y rust cargo awscli
+
+WORKDIR /downloader
+
+COPY . .
+
+RUN cargo build --release
+
+CMD cargo run --release
+
