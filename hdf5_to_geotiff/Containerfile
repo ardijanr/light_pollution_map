@@ -1,0 +1,11 @@
+FROM docker.io/fedora:37
+
+RUN dnf install -y rust cargo
+
+WORKDIR /hdf5_to_geotiff
+
+COPY ./src ./src
+
+RUN cargo build --release
+
+CMD cargo run --release

@@ -1,0 +1,3 @@
+services:
+  hdf5_to_geotiff:
+    build: .
