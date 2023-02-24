@@ -3,9 +3,11 @@ from osgeo import gdal
 import os
 
 ## List input raster files
-os.chdir('./archive/allData/5000/VNP46A2/2012/19/')
+os.chdir('./archive/allData/5000/VNP46A1/2012/19/')
 rasterFiles = os.listdir(os.getcwd())
 #print(rasterFiles)
+
+
 
 
 #Get File Name Prefix
@@ -17,29 +19,29 @@ for layer in range(21):
             rasterFilePre = raster_file[:-3]
 
             ## Open HDF file
-            hdflayer = gdal.Open(raster_file, gdal.GA_ReadOnly)
+            hdf_layer = gdal.Open(raster_file, gdal.GA_ReadOnly)
 
             #print (hdflayer.GetSubDatasets())
 
             # Open raster layer
             #hdflayer.GetSubDatasets()[0][0] - for first layer
             #hdflayer.GetSubDatasets()[1][0] - for second layer ...etc
-            subhdflayer = hdflayer.GetSubDatasets()[layer][0]
-            rlayer = gdal.Open(subhdflayer, gdal.GA_ReadOnly)
+            sub_hdf_layer = hdf_layer.GetSubDatasets()[layer][0]
+            rlayer = gdal.Open(sub_hdf_layer, gdal.GA_ReadOnly)
             #outputName = rlayer.GetMetadata_Dict()['long_name']
 
             #Subset the Long Name
-            outputName = subhdflayer[92:]
+            # outputName = sub_hdf_layer[92:]
 
-            outputNameNoSpace = outputName.strip().replace(" ","_").replace("/","_")
-            outputNameFinal = outputNameNoSpace + rasterFilePre + fileExtension
-            print(outputNameFinal)
+            # outputNameNoSpace = outputName.strip().replace(" ","_").replace("/","_")
+            # outputNameFinal = outputNameNoSpace + rasterFilePre + fileExtension
+            # print(outputNameFinal)
 
 
-            if os.path.exists(outputFolder) == False:
-                os.makedirs(outputFolder)
+            # if os.path.exists(outputFolder) == False:
+            #     os.makedirs(outputFolder)
 
-            outputRaster = outputFolder + outputNameFinal
+            # outputRaster = outputFolder + outputNameFinal
 
             #collect bounding box coordinates
             HorizontalTileNumber = int(rlayer.GetMetadata_Dict()["HorizontalTileNumber"])
@@ -67,3 +69,5 @@ for layer in range(21):
             #                'yRes': yRes,
             #                'outputType': output
             #                }
+
+# gdal_translate -a_srs "EPSG:4326" -a_ullr 0 0 0 0 HDF5:"testingfile.h5"://HDFEOS/GRIDS/VNP_Grid_DNB/Data_Fields/BrightnessTemperature_M12 test.tif

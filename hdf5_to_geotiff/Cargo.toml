@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+gdal = "0.14.0"
+gdal-sys = {version="0.8.0", features=["bindgen"]}
+libc = "0.2.139"

@@ -1,11 +1,12 @@
 FROM docker.io/fedora:37
 
-RUN dnf install -y rust cargo
+RUN dnf install -y rust cargo gdal gdal-devel
 
 WORKDIR /hdf5_to_geotiff
 
-COPY ./src ./src
+COPY . .
+RUN ls -la
 
-RUN cargo build --release
+RUN cargo build
 
-CMD cargo run --release
+CMD cargo run

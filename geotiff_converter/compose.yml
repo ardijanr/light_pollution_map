@@ -1,0 +1,5 @@
+services:
+  hdf5_to_geotiff:
+    build: .
+    volumes:
+      - ../sat_dl/archive:/geotiff_converter/archive:Z

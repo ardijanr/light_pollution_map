@@ -1,3 +1,5 @@
 services:
   hdf5_to_geotiff:
     build: .
+    volumes:
+      - ../sat_dl/archive:/hdf5_to_geotiff/archive:Z

@@ -7,3 +7,6 @@
 3. process and produce new geotiff - high resolution
 
 
+Diagram for timing of processes
+
+Diagram for download code
