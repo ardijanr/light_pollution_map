@@ -1,3 +1,5 @@
 services:
   downloader:
     build: .
+    volumes:
+      - ./archive:/geotiff_converter/archive:Z
