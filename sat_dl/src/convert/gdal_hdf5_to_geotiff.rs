@@ -1,15 +1,12 @@
 use std::process::Command;
 
-use crate::DOWNLOAD_DIR;
-use crate::HDF5_DATA_PATH;
+use crate::{download::FileEntry, HDF5_INTERNAL_DATA_PATH};
 
 //Converts hdf5 dataset to geotiff using gdal
-pub async fn hdf5_file_to_geotiff(
-    filename: &str,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let dl_file = format!("{}/{}", DOWNLOAD_DIR, filename);
-    let data_path = format!(r#"HDF5:"{}":{}"#, dl_file, HDF5_DATA_PATH);
-    let hdf_file = hdf5::File::open(&dl_file).expect(&format!("error opening {}", dl_file));
+pub async fn hdf5_file_to_geotif(
+    file: FileEntry,
+) -> Result<FileEntry, Box<dyn std::error::Error + Send + Sync>> {
+    let hdf_file = hdf5::File::open(&file.hdf5_path())?;
 
     let data = hdf_file.group("HDFEOS/GRIDS/VNP_Grid_DNB")?;
 
@@ -18,7 +15,9 @@ pub async fn hdf5_file_to_geotiff(
     let east = data.attr("EastBoundingCoord")?.read_1d::<i32>()?[0];
     let south = data.attr("SouthBoundingCoord")?.read_1d::<i32>()?[0];
 
-    let a = Command::new("gdal_translate")
+    let data_path = format!(r#"HDF5:"{}":{}"#, file.hdf5_path(), HDF5_INTERNAL_DATA_PATH);
+
+    let _ = Command::new("gdal_translate")
         .args([
             "-a_srs",
             "EPSG:4326",
@@ -28,45 +27,37 @@ pub async fn hdf5_file_to_geotiff(
             &east.to_string(),
             &south.to_string(),
             &data_path,
-            &format!("atiff_results/{}.tif", filename.trim_end_matches(".h5")),
+            &file.tif_path(),
         ])
         .output();
 
-    Ok(())
+    Ok(file)
 }
 
-
-
-pub async fn merge_geotiff(date:&str,dir:&str) -> Result<String, Box<dyn std::error::Error + Send + Sync>>  {
-    //gdalbuildvrt mosaic2.vrt ./atiff_results/*
-    //gdal_translate -of GTiff -co "TILED=YES" mosaic2.vrt mosaic_virt.tif
-    let fname_vrt = &format!("{}.vrt",date);
-    let fname_tif = &format!("{}.tif",date);
+// This will merge all the files located in the directory
+// It will fail if there are files other than .tif files in the directory.
+// Commands being run
+// gdalbuildvrt mosaic.vrt <dir>/*tif
+// gdal_translate -of GTiff -co "TILED=YES" mosaic.vrt mosaic.tif
+//
+pub async fn merge_geotiff(
+    dir: String,
+    file_name: String,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let fname_vrt = &format!("{}/{}.vrt", dir, file_name);
+    let fname_tif = &format!("{}/{}.tif", dir, file_name);
 
     let build_virt = Command::new("gdalbuildvrt")
-    .args([
-        date,
-        fname_vrt,
-        dir,
-    ])
-    .output()?;
-
+        .args([fname_vrt, &format!("{}*tif", dir)])
+        .output()?;
 
     if build_virt.status.code().ok_or("No error code")? != 0 {
         return Err("Unable build vrt file".into());
     }
 
-
     let build_single_geotiff = Command::new("gdal_translate")
-    .args([
-        "-of",
-        "GTiff",
-        "-co",
-        "TILED=YES",
-        fname_vrt,
-        fname_tif,
-    ])
-    .output()?;
+        .args(["-of", "GTiff", "-co", "TILED=YES", fname_vrt, fname_tif])
+        .output()?;
 
     if build_single_geotiff.status.code().ok_or("No error code")? != 0 {
         return Err("Unable build geotiff from vrt file".into());

@@ -1,64 +1,56 @@
+use chrono::NaiveDate;
 use reqwest::Client;
 use tokio::task::JoinSet;
 
-use super::{hdf5_download, FileEntry, Placeholder};
+use super::{
+    hdf5_download::files_download_convert_delete, FileEntry, Placeholder, RemoteFileEntry,
+};
 
-//TODO remove this!!!
-use crate::{convert::hdf5_file_to_geotiff, DOWNLOAD_DIR, TOKEN};
+//TODO remove TOKEN!!!
+use crate::{DOWNLOAD_DIR, PRODUCT_URL, TOKEN, convert::gdal_hdf5_to_geotiff::merge_geotiff};
 
 //Number of parallel downloads
 const PD: usize = 20;
 
-pub async fn list_dir_content(client: Client) -> Result<Vec<FileEntry>, reqwest::Error> {
-    let resp = client.get("https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/details/allData/5000/VNP46A1/2012/19")
-    .header("Authorization", format!("Bearer {TOKEN}"))
-    .header("X-Requested-With","XMLHttpRequest")
-    .send()
-    .await?
-    .json::<Placeholder>()
-    .await?;
+//Fetches directory
+pub async fn get_dir_content(
+    url: String,
+    client: Client,
+) -> Result<Vec<RemoteFileEntry>, reqwest::Error> {
+    let resp = client
+        .get(url)
+        .header("Authorization", format!("Bearer {TOKEN}"))
+        .header("X-Requested-With", "XMLHttpRequest")
+        .send()
+        .await?
+        .json::<Placeholder>()
+        .await?;
 
-    // Rename file since gdal will crash if multiple "." exist in the filename
-    let files = resp
-        .content
+    Ok(resp.content)
+}
+
+//Downloads a certain date with data and deletes it afterwards.
+pub async fn dl_date_and_convert(year:u32 , day:u32, client: Client) -> Result<(), reqwest::Error> {
+    let date_path = format!("{year}/{day}");
+    let download_dir = format!("{}/{}", DOWNLOAD_DIR, date_path);
+    let url = format!("{}/{}", PRODUCT_URL, date_path);
+    // Get the remote directory content and create file entries from them.
+    let files = get_dir_content(url, client.clone())
+        .await?
         .iter()
-        .map(|f| -> Option<FileEntry> {
-            let s = f.name.split(".").collect::<Vec<&str>>();
-
-            // Can't declare last before this since it may fail if len = 0
-            if s.len() < 2 || s[s.len()-1]!="h5"{
+        .filter_map(|f| -> Option<FileEntry> {
+            if !f.name.ends_with(".h5"){
                 return None;
             }
 
-            let last = s.len() - 1;
-
-            let mut name = s[..last].join("_");
-            name.push_str(s[last]);
-
             Some(FileEntry {
-                name: name,
-                downloadsLink: f.downloadsLink.clone(),
+                local_path: download_dir.clone(),
+                name: f.name.trim_end_matches(".h5").split(".").collect::<Vec<&str>>().join("_"),
+                download_link: f.downloadsLink.clone(),
             })
         })
-        .collect::<Vec<Option<FileEntry>>>();
+        .collect::<Vec<FileEntry>>();
 
-    Ok(files.into_iter().filter_map(|x| x ).collect::<Vec<FileEntry>>())
-}
-
-// If some files failed the download by this point there is nothing we can do
-//
-pub async fn files_download_convert_delete(files: Vec<FileEntry>, client: Client) {
-    for file in files {
-        if let Ok(downloaded) = hdf5_download::download(file, DOWNLOAD_DIR, client.clone()).await {
-            if hdf5_file_to_geotiff(&downloaded).await.is_ok() {
-                let _ = std::fs::remove_file(&downloaded);
-            }
-        }
-    }
-}
-
-pub async fn download_dir_content(client: Client) {
-    let files = list_dir_content(client.clone()).await.unwrap();
 
     let mut set = JoinSet::new();
 
@@ -75,13 +67,16 @@ pub async fn download_dir_content(client: Client) {
     //Wait for downloads and geotiff generation to complete
     while let Some(_) = set.join_next().await {}
 
-
     // Validate that all files are downloaded if not display whats missing
-    let failed = files.iter().filter(|f| {
-        f.name
+    let _ = files.iter().inspect(|f| {
+        if !std::path::Path::new(&f.tif_path()).exists() {
+            println!("{} is missing!", f.tif_path());
+        }
     });
 
+    // Merge geotiff into one file
 
-    // Generate one geotiff from the resulting geotiffs
+    merge_geotiff(download_dir, format!("merged_data_{year}_{day}"));
 
+    Ok(())
 }
