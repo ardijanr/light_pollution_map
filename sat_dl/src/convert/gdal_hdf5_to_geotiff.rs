@@ -1,6 +1,43 @@
-use std::process::Command;
+use std::{path::Path, process::Command};
 
-use crate::{download::FileEntry, HDF5_INTERNAL_DATA_PATH};
+use hdf5::types::FixedAscii;
+use nom::bytes::complete::{tag, take_until};
+use nom::number::complete::float;
+use nom::sequence::{delimited, preceded, tuple};
+use nom::IResult;
+
+use crate::download::FileEntry;
+use crate::hdf5_internal_data_path;
+
+#[derive(Debug, Clone, Copy)]
+struct TileBounds {
+    west: i32,
+    east: i32,
+    north: i32,
+    south: i32,
+}
+
+fn parse_text(input: &str) -> Option<TileBounds> {
+    fn bottom_corner<'a>(input: &'a str, corner: &'a str) -> IResult<&'a str, (f32, f32)> {
+        preceded(tuple((take_until(corner), tag(corner))), parse_coord)(input)
+    }
+
+    fn parse_coord(i: &str) -> IResult<&str, (f32, f32)> {
+        let (out, (first, _, second)) =
+            delimited(tag("("), tuple((float, tag(","), float)), tag(")"))(i)?;
+        Ok((out, (first, second)))
+    }
+
+    let (_, (west, north)) = bottom_corner(input, "UpperLeftPointMtrs=").ok()?;
+    let (_, (east, south)) = bottom_corner(input, "LowerRightMtrs=").ok()?;
+
+    Some(TileBounds {
+        north: north as i32 / 1_000_000,
+        south: south as i32 / 1_000_000,
+        west: west as i32 / 1_000_000,
+        east: east as i32 / 1_000_000,
+    })
+}
 
 //Converts hdf5 dataset to geotiff using gdal
 pub async fn hdf5_file_to_geotif(
@@ -8,28 +45,35 @@ pub async fn hdf5_file_to_geotif(
 ) -> Result<FileEntry, Box<dyn std::error::Error + Send + Sync>> {
     let hdf_file = hdf5::File::open(&file.hdf5_path())?;
 
-    let data = hdf_file.group("HDFEOS/GRIDS/VNP_Grid_DNB")?;
+    let data = hdf_file.group("HDFEOS INFORMATION")?;
+    let data_string = data
+        .dataset("/HDFEOS INFORMATION/StructMetadata.0")?
+        .read_scalar::<FixedAscii<32000>>()?;
+    let bounds = parse_text(&data_string).ok_or("Unable to parse text")?;
 
-    let west = data.attr("WestBoundingCoord")?.read_1d::<i32>()?[0];
-    let north = data.attr("NorthBoundingCoord")?.read_1d::<i32>()?[0];
-    let east = data.attr("EastBoundingCoord")?.read_1d::<i32>()?[0];
-    let south = data.attr("SouthBoundingCoord")?.read_1d::<i32>()?[0];
+    let data_path = format!(
+        r#"HDF5:"{}":{}"#,
+        file.hdf5_path(),
+        hdf5_internal_data_path()
+    );
 
-    let data_path = format!(r#"HDF5:"{}":{}"#, file.hdf5_path(), HDF5_INTERNAL_DATA_PATH);
-
-    let _ = Command::new("gdal_translate")
+    let translate = Command::new("gdal_translate")
         .args([
             "-a_srs",
             "EPSG:4326",
             "-a_ullr",
-            &west.to_string(),
-            &north.to_string(),
-            &east.to_string(),
-            &south.to_string(),
+            &bounds.west.to_string(),
+            &bounds.north.to_string(),
+            &bounds.east.to_string(),
+            &bounds.south.to_string(),
             &data_path,
             &file.tif_path(),
         ])
-        .output();
+        .output()?;
+
+    if translate.status.code().ok_or("No error code")? != 0 {
+        return Err("Unable build geotiff from h5 file".into());
+    }
 
     Ok(file)
 }
@@ -40,28 +84,40 @@ pub async fn hdf5_file_to_geotif(
 // gdalbuildvrt mosaic.vrt <dir>/*tif
 // gdal_translate -of GTiff -co "TILED=YES" mosaic.vrt mosaic.tif
 //
-pub async fn merge_geotiff(
+pub async fn merge_geotiffs(
     dir: String,
     file_name: String,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let fname_vrt = &format!("{}/{}.vrt", dir, file_name);
     let fname_tif = &format!("{}/{}.tif", dir, file_name);
 
-    let build_virt = Command::new("gdalbuildvrt")
-        .args([fname_vrt, &format!("{}*tif", dir)])
-        .output()?;
+    if !Path::new(&fname_tif).exists() {
+        //Need to run as bash command here so that /*tiff works
+        let merge_files = Command::new("bash")
+            .arg("-c")
+            .arg(format!("gdalbuildvrt {} {}/*.tif", fname_vrt, dir))
+            .output()?;
 
-    if build_virt.status.code().ok_or("No error code")? != 0 {
-        return Err("Unable build vrt file".into());
+        if merge_files.status.code().ok_or("No error code")? != 0 {
+            return Err("Unable build vrt file".into());
+        }
+
+        let merged_to_geotiff = Command::new("gdal_translate")
+            .args(["-of", "GTiff", "-co", "TILED=YES", fname_vrt, fname_tif])
+            .output()?;
+
+        if merged_to_geotiff.status.code().ok_or("No error code")? != 0 {
+            return Err("Unable build geotiff from vrt file".into());
+        }
     }
 
-    let build_single_geotiff = Command::new("gdal_translate")
-        .args(["-of", "GTiff", "-co", "TILED=YES", fname_vrt, fname_tif])
+    // Delete intermediates
+    let _ = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "find {dir}/ -type f ! -name '{file_name}.tif' -delete"
+        ))
         .output()?;
-
-    if build_single_geotiff.status.code().ok_or("No error code")? != 0 {
-        return Err("Unable build geotiff from vrt file".into());
-    }
 
     Ok(fname_tif.to_string())
 }
