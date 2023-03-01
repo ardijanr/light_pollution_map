@@ -1,0 +1,11 @@
+version: "3"
+services:
+
+  sat_dl:
+    build:
+      context: ./sat_dl
+      dockerfile: Containerfile
+    container_name: sat_dl
+    volumes:
+      - ./sat_dl/archive:/downloader/archive:Z
+

@@ -1,37 +1,52 @@
-use std::process::Command;
-use std::fmt::format;
+use std::env;
 
-fn main() {
-    println!("Hello, World!");
-    download_folder("19")
+use chrono::Datelike;
+use reqwest::Client;
+
+pub mod convert;
+pub mod download;
+
+const DOWNLOAD_DIR_PREFIX: &str = "./archive/VNP46A2";
+const PRODUCT_URL: &str =
+    "https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/details/allData/5000/VNP46A2";
+const DATASET_PATH: &str = "//HDFEOS/GRIDS/VNP_Grid_DNB/Data_Fields";
+// DATASET OPTIONS
+// DNB_BRDF-Corrected_NTL
+// DNB_Lunar_Irradiance
+// Gap_Filled_DNB_BRDF-Corrected_NTL
+// Latest_High_Quality_Retrieval
+// Mandatory_Quality_Flag
+// QF_Cloud_Mask
+// Snow_Flag
+
+const DATASET: &str = "Gap_Filled_DNB_BRDF-Corrected_NTL";
+
+pub fn hdf5_internal_data_path() -> String {
+    format!("{}/{}", DATASET_PATH, DATASET)
 }
 
-fn download_folder(foldername:&str){
-    // wget -e robots=off -m -np -R .html,.tmp -nH --cut-dirs=3 "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A1/2012/" --header "Authorization: Bearer INSERT_DOWNLOAD_TOKEN_HERE" -P .
-    // let command_str: String = format!("-e robots=off -m -np -R .html,.tmp -nH --cut-dirs=3 'https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A1/2012/{}' --header 'Authorization: Bearer INSERT_DOWNLOAD_TOKEN_HERE' -P .",foldername);
-    // dbg!(&command_str);
-    let token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBUFMgT0F1dGgyIEF1dGhlbnRpY2F0b3IiLCJpYXQiOjE2NzY5MjkyMTMsIm5iZiI6MTY3NjkyOTIxMywiZXhwIjoxNjkyNDgxMjEzLCJ1aWQiOiJwb2x5Z29uMzUwNyIsImVtYWlsX2FkZHJlc3MiOiJhLnJleGhhakBzdHVkLnVpcy5ubyIsInRva2VuQ3JlYXRvciI6InBvbHlnb24zNTA3In0.p8HpTKWCOv1GmjXvyZZlm4O7yQEBAn_95JPIRONzHaM";
-    let out = Command::new("wget")
-                .args([
-                    "-e",
-                    "robots=off",
-                    "-m",
-                    "-np",
-                    "-R",
-                    ".html,.tmp",
-                    "-nH",
-                    // "--cut-dirs=3",
-                    &format!("https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/VNP46A1/2012/{}/",foldername),
-                    "--header",
-                    &format!("Authorization: Bearer {}",token),
-                    "-P",
-                    "."
-                ])
-                .output()
-                .expect("failed to execute process");
-
-    dbg!(out.stdout);
-    println!("{}",String::from_utf8(out.stderr).unwrap());
+pub fn download_dir() -> String {
+    format!("{}/{}", DOWNLOAD_DIR_PREFIX, DATASET)
 }
 
+use download::dir_download::dl_date_and_convert;
 
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+async fn main() {
+    dotenv::dotenv().expect("Missing .env file!");
+    env::var("TOKEN").expect("Missing environment variable TOKEN");
+
+    let client = Client::new();
+
+    //TODO make this an input argument
+    let from_year = 2012;
+
+    let year_now = chrono::offset::Utc::now().date_naive().year() as u32;
+    for year in from_year..year_now + 1 {
+        for day in 1..367 {
+            println!("Downloading day {}",day);
+            let _ = dl_date_and_convert(year, day, client.clone()).await;
+
+        }
+    }
+}

@@ -1,0 +1,5 @@
+./target
+./Containerfile
+./compose.yml
+./.dockerignore
+./archive

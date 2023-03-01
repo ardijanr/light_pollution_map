@@ -1,3 +1,5 @@
 services:
   downloader:
     build: .
+    volumes:
+      - ./archive:/downloader/archive:Z
