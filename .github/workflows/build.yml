@@ -11,6 +11,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Append secrets to .env file
+      run: |
+          echo "${{ secrets.TOKEN }}" >> ./sat_dl/.env
     - name: Build the Docker image
       run: docker-compose up --build --detach
     - name: Is Container Running
