@@ -1,0 +1,17 @@
+name: CI Docker Container Run
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: docker-compose up --build --detach
+    - name: Is Container Running
+      run: sleep 10 && result=$( docker ps --format "{{.Status}}" ) && if [[ -n "$result" ]]; then exit 0 ; else exit 1; fi
