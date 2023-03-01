@@ -44,7 +44,9 @@ async fn main() {
     let year_now = chrono::offset::Utc::now().date_naive().year() as u32;
     for year in from_year..year_now + 1 {
         for day in 1..367 {
+            println!("Downloading day {}",day);
             let _ = dl_date_and_convert(year, day, client.clone()).await;
+
         }
     }
 }
