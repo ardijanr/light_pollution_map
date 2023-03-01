@@ -17,4 +17,4 @@ jobs:
     - name: Build the Docker image
       run: docker-compose up --build --detach
     - name: Is Container Running
-      run: sleep 10 && result=$( docker ps --format "{{.Status}}" ) && if [[ -n "$result" ]]; then exit 0 ; else exit 1; fi
+      run: sleep 5 && result=$( docker ps --format "{{.Status}}" ) && if [[ -n "$result" ]]; then exit 0 ; else exit 1; fi
