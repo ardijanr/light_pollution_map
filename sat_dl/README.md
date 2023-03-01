@@ -13,4 +13,4 @@
 The code is written to hopefully be quite readable.
 However a diagram is provided here.
 
-INSERT DIAGRAM
+![alt text](../assets/sat_dl.png?raw=true)
