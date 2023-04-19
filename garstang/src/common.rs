@@ -69,3 +69,28 @@ pub fn rotate_about_y_axis(vector: Vector3D, r:f64 )->Vector3D{
 
     (dot_product(row_1,vector), dot_product(row_2,vector), dot_product(row_3,vector))
 }
+
+
+// Rotates vector about the y axis with the angle r
+pub fn rotate_about_z_axis(vector: Vector3D, r:f64 )->Vector3D{
+
+
+    let row_1 : Vector3D = (r.cos() , -r.sin() , 0.);
+    let row_2 : Vector3D = (r.sin() , r.cos() , 0. );
+    let row_3 : Vector3D = (0. , 0.0 , 1.);
+
+    (dot_product(row_1,vector), dot_product(row_2,vector), dot_product(row_3,vector))
+}
+
+
+pub fn sin(a:f64)->f64{
+    a.sin()
+}
+
+pub fn cos(a:f64)->f64{
+    a.cos()
+}
+
+pub fn tan(a:f64)->f64{
+    a.tan()
+}
