@@ -5,27 +5,64 @@ pub mod common;
 pub use garstang_1986::garstang_1986_calc;
 pub use garstang_1989::garstang_1989_calc;
 use crate::common::*;
+use tokio::task::JoinSet;
 
-fn main() {
+#[tokio::main(flavor = "multi_thread", worker_threads = 16)]
+async fn main() {
 
     // garstang_1989_calc(1000., 5., 0.,0., (1.,0.,0.));
 
-        let distance = 0.75*(2 as f64);
-        let file_name = format!("test_{}m.png",(distance*1000.) as u32);
-        let result = observer_view_yz_plane_polar(10.*4.,10.,distance);
-        generate_image_from_2d_vec(result,file_name);
+        // let distance = 0.75*(2 as f64);
+        // let file_name = format!("test_{}m.png",(distance*1000.) as u32);
+        // let result = observer_view_rotated(10.*4.,10.,distance);
+        // generate_image_from_2d_vec(result,file_name);
+
+    let mut set = JoinSet::new();
+
+    for i in 1..1800 {
+
+    //     // let result = observer_view_rotated(30.*4.,30.,distance);
+
+        set.spawn( async move {
+            let i = i.to_owned();
+            let distance = 0.05*(i as f64);
+            let alignment = 5;
+            let file_name= format!("image_{:0alignment$}.png", i, alignment = alignment);
+
+            let result = observer_view_rotated(1.,1.,distance);
+            generate_image_from_2d_vec(result,file_name);
+
+        });
+    //     // let result = observer_view_yz_plane_cart(30.*4.,30.,distance);
+    }
 
 
-    // for i in 1..11 {
-    //     let distance = 0.75*(2 as f64);
-    //     let file_name = format!("test_{}m.png",(distance*1000.) as u32);
-    // //     // let result = observer_view_rotated(30.*4.,30.,distance);
-    //     let result = observer_view_yz_plane_polar(10.*4.,10.,distance);
-    // //     // let result = observer_view_yz_plane_cart(30.*4.,30.,distance);
-    //     generate_image_from_2d_vec(result,file_name);
-    // }
+    //Wait for downloads and geotiff generation to complete
+    while let Some(_) = set.join_next().await {
+
+    }
 }
 
+
+fn observer_view_rotated(degree_steps_y:f64,degree_steps_x:f64,distance_to_observer:f64)->Vec<Vec<f64>>{
+
+    let mut data = vec![];
+    for b in 1..(90./degree_steps_y) as usize{
+        let mut row = vec![];
+        for a in 1..(361./degree_steps_x) as usize{
+            let vec = rotate_about_z_axis((1.,0.,0.01), deg_to_rad(degree_steps_y*a as f64));
+            let vec = rotate_about_y_axis(vec, deg_to_rad(degree_steps_x*b as f64));
+
+            row.push(garstang_1989_calc(1000., distance_to_observer, 0.01,0.001, vec));
+
+        }
+        // break;
+
+        data.push(row);
+    }
+
+    return data;
+}
 
 
 fn observer_view_yz_plane_cart(width_y:f64,height_z:f64,distance_to_observer:f64)->Vec<Vec<f64>>{
@@ -103,30 +140,6 @@ fn observer_view_yz_plane_polar(width_y:f64,height_z:f64,distance_to_observer:f6
 
 
 
-fn observer_view_rotated(width_y:f64,width_x:f64,distance_to_observer:f64)->Vec<Vec<f64>>{
-
-    let mut data = vec![];
-    for b in 1..90{
-        let mut row = vec![];
-        for a in 1..360{
-            let vec = rotate_about_z_axis((-1.,0.,0.), deg_to_rad(a as f64));
-            // println!("z_rot: {vec:?}, angle: {b}");
-            let vec = rotate_about_y_axis(vec, deg_to_rad(b as f64));
-            // println!("y_rot: {vec:?}, angle: {b}");
-
-            row.push(garstang_1989_calc(1000., distance_to_observer, 0.,0., vec));
-
-        }
-        // break;
-
-        data.push(row);
-    }
-
-    return data;
-}
-//calculate triangele stuff to make image
-
-//
 
 fn generate_image_from_2d_vec(data : Vec<Vec<f64>>,filename: String){
     use image::{GenericImage, GenericImageView, ImageBuffer, RgbImage};
@@ -134,7 +147,7 @@ fn generate_image_from_2d_vec(data : Vec<Vec<f64>>,filename: String){
     let dim_x = data[0].len();
     let dim_y = data.len();
     // Construct a new RGB ImageBuffer with the specified width and height.
-    let mut img: RgbImage = ImageBuffer::new(dim_x as u32, dim_y as u32);
+    let mut img: RgbImage = ImageBuffer::new(dim_x as u32, dim_y as u32 +1);
 
     // let mut imgbuf = image::ImageBuffer::new(dim_x, dim_y);
     let max = data.iter().flatten().max_by(|a, b| a.total_cmp(b)).unwrap();
@@ -142,13 +155,18 @@ fn generate_image_from_2d_vec(data : Vec<Vec<f64>>,filename: String){
 
         for x in 0..dim_x {
             // let pixel = image::Rgb<u8>::from_slice ;
-            // let data_val = data[y][x];
-            let scaled_val = (data[dim_y-y-1][x]*(1./max )*255.) as u8;
+            let data_val = data[y][x];
+            // let scaled_val = (data[dim_y-y-1][x]*(1./max )*2.*255.) as u8;
+            let scaled_val = (data[dim_y-y-1][x]*1000.*255.) as u8;
             // println!("{x},{y}, scaled_val= {scaled_val}, data_val={data_val}"); 
             img.get_pixel_mut(x as u32, y as u32).0= [0,scaled_val,0];
         }
         // let scaled_val = (data[dim_y-y-1][x].log(10.)*100000.) as u8;
 
+    }
+
+    for h in 0..dim_x{
+        img.get_pixel_mut(h as u32, dim_y as u32).0= [50,50,50];
     }
 
     println!("FINISHED IMAGE {filename} dim_x:{dim_x}, dim_y: {dim_y}");

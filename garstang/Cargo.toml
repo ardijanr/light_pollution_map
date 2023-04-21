@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 # sequential-integration = "1.0.2"
 image = "0.24.6"
+tokio = { version = "1.25.0", features = ["full"] }

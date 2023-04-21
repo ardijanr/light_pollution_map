@@ -52,20 +52,21 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
     let S: Point3D = (0.,0.,-SR);
     // The radius of the system
 
-    let dim_xy = 5;  // Split object into (dim * dim) points
+    let mut dim_x = 3;  // Split object into (dim * dim) points
+    let mut dim_y = 13;  // Split object into (dim * dim) points
 
     //Logic:
     // C_x-R_x + (2R_x/dim)*index-1 because index moves from 0 to dim-1;
     // C is the center point of the disk
     // in this case c is at origin of the coordinate system meaning
-    let position_from_index = |index: usize| -> f64 {
-        if dim_xy<=1 {
+    let position_from_index = |index: usize,dim:usize| -> f64 {
+        if dim<=1 {
             return 0.;
         }
-        -R + (2.0 * R / (dim_xy-1) as f64) * index as f64
+        -R + (2.0 * R / (dim-1) as f64) * index as f64
     };
 
-    let delta_θ = 0.0174533;
+    let delta_θ = 0.0174533*2.;
 
 
     //The arc angle supsended by the distance along the earth D+H, where H is the height above sea level
@@ -80,8 +81,13 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
     let O: Point3D = ((SR+A)*(distance/SR).sin(),0.,(SR+A)*(distance/SR).cos()-SR);
     // let O: Point3D = (E*(distance/E).sin(),0.,(distance/E).cos()*E-E);
 
-    let dx = 2.0 * R / dim_xy as f64; //
-    let dy = dx;
+    let dx = 2.0 * R / dim_x as f64; //
+    let dy = 2.0 * R / dim_y as f64;
+
+
+
+
+
     let mut sum = 0.0;
 
     let mut dbg_text = "".to_string();
@@ -95,14 +101,15 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
     }
 
     if dir_vec_OQ_norm.2<0.{
+        // println!("Negative Z, skipping {dir_vec_OQ_norm:?}");
         return 0.;
     }
 
-    for ix in 0..dim_xy {
-        let pos_x = position_from_index(ix);
+    for ix in 0..dim_x {
+        let pos_x = position_from_index(ix,dim_x);
 
-        for iy in 0..dim_xy {
-            let pos_y = position_from_index(iy);
+        for iy in 0..dim_y {
+            let pos_y = position_from_index(iy,dim_y);
             let X: Point3D = (pos_x, pos_y, 0.);
 
             let XO = points_to_vector(X,O);
