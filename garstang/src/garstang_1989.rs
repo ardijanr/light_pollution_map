@@ -27,10 +27,13 @@ fn f_theta(_theta: f64) -> f64 {
 //
 // The city has center at the origin and the observer has center at (distance,0,A)
 //
-pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vector3D) -> f64 {
+pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64,A:f64,obs_direction:Vector3D) -> f64 {
 
     let dbg_lvl = 0;
 
+    if distance<0.325{
+        distance = 0.325;
+    }
 
     let N_m: f64 = 2.55 * ten_to_pow(19); // Particle density at sea level
     let σ_r: f64 = 4.6 * ten_to_pow(-27); //aerosol scattering coefficient
@@ -40,8 +43,8 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
     const R: f64 = 0.325; // center from sides of a pixel or square city in km
     const K: f64 = 0.5; // Atmospheric clarity
     const E: f64 = 6371.; // Radius of the earth sea level
-    const F: f64 = 0.01; // Fraction of light being emitted upwards
-    const G: f64 = 0.15;// Amount of light being reflected from the ground
+    const F: f64 = 0.15; // Fraction of light being emitted upwards
+    const G: f64 = 0.15; // Amount of light being reflected from the ground
     const gamma: f64 = 1.0 / 3.0; // Arbitrary value, don't change...
     const ε: f64 = 16./(9.*π);
 
@@ -52,8 +55,8 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
     let S: Point3D = (0.,0.,-SR);
     // The radius of the system
 
-    let mut dim_x = 3;  // Split object into (dim * dim) points
-    let mut dim_y = 13;  // Split object into (dim * dim) points
+    let mut dim_x = 1;  // Split object into (dim * dim) points
+    let mut dim_y = 1;  // Split object into (dim * dim) points
 
     //Logic:
     // C_x-R_x + (2R_x/dim)*index-1 because index moves from 0 to dim-1;
@@ -133,7 +136,7 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
                 println!("----------------DEBUG-LEVEL-2--------------");
                 println!("X: {X:?}, XO: {XO:?} , θ: {theta} , Φ_start: {phi_start}, u_prev: {u_prev} ")
             }
-
+            let mut saved_p1=0.;
             loop {
                 integration_index += 1; //Not used after this point
 
@@ -181,23 +184,27 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
                 };
 
 
-                let extinction_fuction = | A_local:f64, angle:f64, dist_a:f64, is_OQ:bool |->f64{
-                    let dist_b;
+                let mut extinction_fuction = | A_local:f64, angle:f64, dist_a:f64, is_OQ:bool |->f64{
+                    let p1;
+                    //If we have passed the cuttof point.
                     if XQO_angle<π/2. && is_OQ{
-                        dist_b = π/2.;
+                        p1 = saved_p1;
                     } else {
-                        dist_b = u ;
+                        p1 = p(A_local,angle,c,dist_a) ;
+                        saved_p1 = p1;
                     }
 
                     //P1 is the same as P2 with a replacing c everywhere, an internal c_ is therefore used
 
-                    return exp(-N_m*σ_r*exp(-c*H)*( p(A_local,angle,c,dist_b)+11.778*K*p(A_local,angle,a,dist_a) ) );
+                    return exp(-N_m*σ_r*exp(-c*H)*( p1+11.778*K*p(A_local,angle,a,dist_a) ) );
                 };
 
                 let I_up_val = I_up();
                 let EF_QO_val = extinction_fuction(A,z,u,true);
                 let EF_XQ_val = extinction_fuction(0.,Ψ,s,false);
-                let DS_val = 1. + (11.11* K*p(0.,Ψ, a,s) + gamma*p(0.,Ψ, c,s)*N_m*σ_r*exp(-c*H) );
+
+                let DS_val = 1. + (gamma*p(0.,Ψ, c,s) + 11.11* K*p(0.,Ψ, a,s))*N_m*σ_r*exp(-c*H);
+
                 let rest_a = exp(-c * h); // * 3. * ((1. + (θ + Φ).cos().powi(2)) / (16. * π))
                 let rest_b = 3.*(1. + (θ + Φ).cos().powi(2));
                 let rest_c = 16.0*π;
@@ -211,9 +218,8 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
 
 
 
-                let new_db = I_up()
+                let new_db = I_up_val
                     *s.powi(-2)
-                    * I_up_val
                     * EF_QO_val
                     * EF_XQ_val
                     * DS_val
@@ -240,5 +246,13 @@ pub fn garstang_1989_calc(LP: f64, distance: f64, H: f64,A:f64,obs_direction:Vec
         }
     }
     // println!("sum: {sum}");
-    π * N_m * σ_r * exp(-c * H) * sum
+    let b = π * N_m * σ_r * exp(-c * H) * sum;
+    //Visual range
+    b
+    // 2.171*(1.+0.1122 * b.sqrt()).ln()
+    // if b> 1479. {
+    //     return 7.93 + 2.171*(1.+0.1122 * b.sqrt()).ln()
+    // } else {
+    //     return 4.305 + 2.171*(1.+0.001122 * b.sqrt()).ln()
+    // }
 }

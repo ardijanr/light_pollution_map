@@ -1,8 +1,14 @@
-[package]
+[workspace]
+members = [
+    "sat_dl",
+    "garstang",
+    "map_generation"
+]
+
+[workspace.package]
 name = "light_pollution_map"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ardijan Rexhaj"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+# [dependencies]

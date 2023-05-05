@@ -81,16 +81,3 @@ pub fn rotate_about_z_axis(vector: Vector3D, r:f64 )->Vector3D{
 
     (dot_product(row_1,vector), dot_product(row_2,vector), dot_product(row_3,vector))
 }
-
-
-pub fn sin(a:f64)->f64{
-    a.sin()
-}
-
-pub fn cos(a:f64)->f64{
-    a.cos()
-}
-
-pub fn tan(a:f64)->f64{
-    a.tan()
-}
