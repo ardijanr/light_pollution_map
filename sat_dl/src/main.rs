@@ -1,6 +1,6 @@
-use std::env;
+use std::{env, process::exit};
 
-use chrono::Datelike;
+use chrono::{Datelike, Duration, NaiveDate};
 use reqwest::Client;
 
 pub mod convert;
@@ -36,17 +36,47 @@ async fn main() {
     dotenv::dotenv().expect("Missing .env file!");
     env::var("TOKEN").expect("Missing environment variable TOKEN");
 
+    //Parse command line arguments to get the start and end dates
+    let (mut current_date, end_date) = parse_arguments(env::args().collect::<Vec<String>>());
+
     let client = Client::new();
 
-    //TODO make this an input argument
-    let from_year = 2012;
+    while current_date < end_date {
+        println!("Downloading date: {current_date}");
+        let _ = dl_date_and_convert(
+            current_date.year() as u32,
+            current_date.ordinal(),
+            client.clone(),
+        )
+        .await;
 
-    let year_now = chrono::offset::Utc::now().date_naive().year() as u32;
-    for year in from_year..year_now + 1 {
-        for day in 1..367 {
-            println!("Downloading day {}",day);
-            let _ = dl_date_and_convert(year, day, client.clone()).await;
-
-        }
+        current_date += Duration::days(1);
     }
+}
+
+fn parse_arguments(arguments: Vec<String>) -> (NaiveDate, NaiveDate) {
+    if arguments.len() < 2 {
+        println!("Missing argument starting date d.m.y");
+        exit(1)
+    } else if arguments.len() > 3 {
+        println!("Incorrect arguments, supply start and end date example: 1.1.2012 1.1.2020");
+        exit(1);
+    }
+
+    let start_date =
+        NaiveDate::parse_from_str(&arguments[1], "%d.%m.%Y").expect("Unable to parse start date");
+    let end_date;
+
+    if let Some(val) = arguments.get(2) {
+        end_date = NaiveDate::parse_from_str(&val, "%d.%m.%Y").expect("Unable to parse start date");
+    } else {
+        end_date = chrono::offset::Utc::now().date_naive();
+    }
+
+    if start_date > end_date {
+        println!("Incorrect arguments, start date is after end date");
+        exit(1);
+    }
+
+    (start_date, end_date)
 }

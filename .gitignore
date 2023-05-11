@@ -4,3 +4,5 @@
 [Aa]tiff_results
 [Cc]argo.lock
 .vscode
+.env
+Cargo.lock

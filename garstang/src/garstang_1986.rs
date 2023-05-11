@@ -9,19 +9,18 @@ use crate::common::*;
 //
 // The city has center at the origin and the observer has center at (distance,0,A)
 //
-pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D) -> f64 {
-
+pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64, obs_direction: Vector3D) -> f64 {
     let N_m: f64 = 2.55 * ten_to_pow(19); // Particle density at sea level
     let σ_r: f64 = 4.6 * ten_to_pow(-27); //aerosol scattering coefficient
     const c: f64 = 0.104; // Molecular scale height in km^-1
     const π: f64 = std::f64::consts::PI;
-    const A:f64 = 0.002; // A is height of observer above city
+    const A: f64 = 0.002; // A is height of observer above city
     const R: f64 = 0.325; // center from sides of a pixel or square city in km
     const K: f64 = 0.1; // Atmospheric clarity
-    const gamma: f64 = 1.0/3.0; // Arbitrary value, don't change...
+    const gamma: f64 = 1.0 / 3.0; // Arbitrary value, don't change...
     let a = 0.657 + 0.059 * K;
     const F: f64 = 0.1; // Fraction of light being emitted upwards
-    const G: f64 = 0.15;// Amount of light being reflected from the ground
+    const G: f64 = 0.15; // Amount of light being reflected from the ground
 
     // let Ψ: f64 = 45.0; //Zenith angle of upward bound ray
 
@@ -30,35 +29,32 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D)
             return 7.0 * exp(-0.2462 * _theta);
         }
 
-        if deg_to_rad(10.0) < _theta && _theta <= π/2. {
+        if deg_to_rad(10.0) < _theta && _theta <= π / 2. {
             return 0.9124 * exp(-0.04245 * _theta);
         }
-        if π/2. < _theta && _theta <= π {
+        if π / 2. < _theta && _theta <= π {
             return 0.02;
         }
 
         return 0.02;
     }
 
-    let dim = 6;  // Split object into (dim * dim) points
+    let dim = 6; // Split object into (dim * dim) points
 
     //Logic:
     // C_x-R_x + (2R_x/dim)*index-1 because index moves from 0 to dim-1;
     // C is the center point of the disk
     // in this case c is at origin of the coordinate system meaning
     let position_from_index = |index: usize| -> f64 {
-        if dim<=1 {
+        if dim <= 1 {
             return 0.;
         }
-        -R + (2.0 * R / (dim-1) as f64) * index as f64
+        -R + (2.0 * R / (dim - 1) as f64) * index as f64
     };
 
-    let du = 50./1000.; //in km
-
-
+    let du = 50. / 1000.; //in km
 
     //Dynamically calculate DU based on angle between QX and QO
-
 
     // This is the direction the observer is looking towards as a unit vector.
     let directional_vector_OQ: Vector3D = new_vector_normalized(obs_direction);
@@ -94,14 +90,14 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D)
                 let s = length_of_vector(XQ_vec);
                 let h = Q.2.max(0.);
 
-
-                if uu>100. || h>= 100. {
+                if uu > 100. || h >= 100. {
                     break;
                 }
 
                 //LOCALLY SCOPED FUNCTIONS
-                let I_up = ||{
-                    LP/(2.*4.) * (2.*G*(1.-F)*Ψ.cos() + 0.554 * F * rad_to_deg(Ψ).powi(4))
+                let I_up = || {
+                    LP / (2. * 4.)
+                        * (2. * G * (1. - F) * Ψ.cos() + 0.554 * F * rad_to_deg(Ψ).powi(4))
                 };
 
                 fn extinction_function(
@@ -116,12 +112,9 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D)
                     angle: f64,
                 ) -> f64 {
                     let p = || -> f64 {
-                        (
-                            (exp(-c * A_local) - exp(-c * h))/c
-                        ) + (
-                            11.778 * K * 1./a_local*
-                            (exp(-a_local * A_local) - exp(-a_local * h))
-                        )
+                        ((exp(-c * A_local) - exp(-c * h)) / c)
+                            + (11.778 * K * 1. / a_local
+                                * (exp(-a_local * A_local) - exp(-a_local * h)))
                     };
 
                     exp(-N_m * σ_r * exp(-c * H) * p() * sec(angle))
@@ -131,7 +124,9 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D)
                 let double_scattering = || -> f64 {
                     let N_a_sigma_a = 11.11 * K * N_m * σ_r * exp(-c * H);
 
-                    1.0 + N_a_sigma_a * (1. - exp(-a * s * Ψ.cos())) / (a * Ψ.cos()) + (gamma * N_m * σ_r * exp(-c * H) * (1. - exp(-c * s * Ψ.cos()))/(c*Ψ.cos()))
+                    1.0 + N_a_sigma_a * (1. - exp(-a * s * Ψ.cos())) / (a * Ψ.cos())
+                        + (gamma * N_m * σ_r * exp(-c * H) * (1. - exp(-c * s * Ψ.cos()))
+                            / (c * Ψ.cos()))
                             / (c * Ψ.cos())
                 };
 
@@ -140,14 +135,13 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64,obs_direction:Vector3D)
                 let ef_qo = extinction_function(Q, O, a, h, O.2, N_m, σ_r, H, z);
                 // let rest = (exp(-c * h) * 3. * ((1. + (θ + Φ).cos().powi(2)) / (16. * π)) + exp(-alpha * h) * 11.11 * K * f_theta(θ + Φ));
 
-
                 let _d_scattering = double_scattering();
                 let rest_a = exp(-c * h); // * 3. * ((1. + (θ + Φ).cos().powi(2)) / (16. * π))
-                let rest_b = 3.*(1. + (θ + Φ).cos().powi(2));
-                let rest_c = 16.0*π;
-                let rest_d = exp(-a*h)*11.11*K;
+                let rest_b = 3. * (1. + (θ + Φ).cos().powi(2));
+                let rest_c = 16.0 * π;
+                let rest_d = exp(-a * h) * 11.11 * K;
                 let rest_e = f_theta(θ + Φ);
-                let rest = (rest_a*rest_b/rest_c)+rest_d*rest_e;
+                let rest = (rest_a * rest_b / rest_c) + rest_d * rest_e;
 
                 let new_db = I_up()
                     * frac_s

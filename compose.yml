@@ -1,11 +1,21 @@
 version: "3"
 services:
+  build_image:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: build_image
 
   sat_dl:
-    build:
-      context: ./sat_dl
-      dockerfile: Containerfile
-    container_name: sat_dl
+    build: ghcr.io/ardijanr/light_pollution_map/sat_dl
     volumes:
-      - ./sat_dl/archive:/downloader/archive:Z
+      - ./archive://archive:Z
+    depends_on:
+      - build_image
 
+  map_generation:
+    build: ghcr.io/ardijanr/light_pollution_map/map_generation
+    volumes:
+      - ./archive:/archive:Z
+    depends_on:
+      - build_image

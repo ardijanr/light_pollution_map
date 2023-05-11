@@ -49,18 +49,25 @@ pub async fn dl_date_and_convert(
     //Check if folder allready contains the merged file
     if let Ok(content) = std::fs::read_dir(&download_dir) {
         let contains_merged_data = content
-            .filter_map(|x| -> Option<bool> {
-                Some(
-                    x.ok()?
-                        .file_name()
-                        .into_string()
-                        .ok()?
-                        .contains("merged_data_"),
-                )
+            //This will return a single empty Some() if the the merged_data file exists
+            //Filter map will remove any None values
+            .filter_map(|x| -> Option<()> {
+                if x.ok()?
+                    .file_name()
+                    .into_string()
+                    .ok()?
+                    .contains("merged_data_")
+                {
+                    return Some(());
+                }
+                None
             })
-            .collect::<Vec<bool>>();
+            // Once collected into a vector we can check its length to know if the file exists
+            .collect::<Vec<()>>()
+            .len()
+            > 0;
 
-        if contains_merged_data.len() > 0 && contains_merged_data[0] {
+        if contains_merged_data {
             println!("Found merged file in {} skipping!", download_dir);
             return Ok(());
         }

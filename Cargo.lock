@@ -36,25 +36,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "array-init"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
-
-[[package]]
 name = "ascii"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
-
-[[package]]
-name = "atomic-array"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd13578f310af33a2a806d2f83faad80ed4d38085b70839660c847f0a09beebf"
-dependencies = [
- "atomic-ref2",
-]
 
 [[package]]
 name = "atomic-polyfill"
@@ -64,12 +49,6 @@ checksum = "e3ff7eb3f316534d83a8a2c3d1674ace8a5a71198eba31e2e2b597833f699b28"
 dependencies = [
  "critical-section",
 ]
-
-[[package]]
-name = "atomic-ref2"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d1ffd1750a574914076b9fb8811acf312d6b416f1f36f99cf11759284959323"
 
 [[package]]
 name = "autocfg"
@@ -802,7 +781,7 @@ dependencies = [
  "num-traits",
  "png",
  "qoi",
- "tiff 0.8.1",
+ "tiff",
 ]
 
 [[package]]
@@ -937,15 +916,11 @@ dependencies = [
 name = "map_generation"
 version = "0.1.0"
 dependencies = [
- "array-init",
- "atomic-array",
  "colorgrad",
  "garstang",
  "geo",
  "image",
- "rstar",
  "serde_json",
- "tiff 0.9.0",
 ]
 
 [[package]]
@@ -1723,17 +1698,6 @@ name = "tiff"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7449334f9ff2baf290d55d73983a7d6fa15e01198faef72af07e2a8db851e471"
-dependencies = [
- "flate2",
- "jpeg-decoder",
- "weezl",
-]
-
-[[package]]
-name = "tiff"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d172b0f4d3fba17ba89811858b9d3d97f928aece846475bbda076ca46736211"
 dependencies = [
  "flate2",
  "jpeg-decoder",
