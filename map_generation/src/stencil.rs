@@ -1,26 +1,22 @@
-use image::{open, ImageBuffer, RgbImage, RgbaImage};
-use std::fs::File;
-use std::io::{Read, Write};
-use std::ops::{Add, AddAssign};
-use std::sync::atomic::{AtomicU64, Ordering};
+use image::{open, ImageBuffer, RgbaImage};
+use std::ops::{AddAssign};
 use std::sync::{Arc, RwLock};
 use std::{thread, vec};
 
 use geo::point;
 use geo::prelude::*;
 
-use colorgrad::{Color, Gradient};
 
 use crate::common::{
-    generate_gradient, get_cache_from_file, get_image_raw_from_file, length, length_square,
-    write_cache_to_file, write_image_cache_to_file, ParArray,
+    generate_gradient, get_cache_from_file,  length,
+    write_cache_to_file, ParMatrix,
 };
 
 const TEST_IMAGE: &str = "/home/ardijan/repos/bachelor_thesis/light_pollution_map/sat_dl/archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2012/41/VNP46A2_A2012041_h17v03_001_2020039030351.tif";
 const PIXEL_DIM: f64 = 0.004166666666666666609;
 const MAX_DIST: usize = 3000;
 
-pub fn stencil() -> Arc<ParArray> {
+pub fn stencil() -> Arc<ParMatrix> {
     //Load the tile
     let data_image = open(TEST_IMAGE).unwrap().to_luma16();
     //Get the dimention of the tile 2400
@@ -41,36 +37,16 @@ pub fn stencil() -> Arc<ParArray> {
         })
         .collect::<Vec<(u32, u32, u16)>>();
 
-    // This is the matrix which we will write too
-    // Its the same size as the image itself
-    let mut result_matrix: Vec<Vec<AtomicU64>> = vec![];
-    for _ in 0..2400 {
-        let mut line = vec![];
-        for _ in 0..2400 {
-            line.push(AtomicU64::new(0))
-        }
-        result_matrix.push(line);
-    }
 
     // This type is being wrapped in two other types at the same time
-    // Par array ensures interior mutability is possible
+    // Par matrix ensures interior mutability is possible
     // While ARC allows sharing of a refrence between threads.
-    let result_image = Arc::new(ParArray {
-        array: result_matrix,
-    });
+    let result_image = Arc::new(ParMatrix::new(2400,2400));
 
     let offset_lat: f64 = -10.;
     let offset_lon: f64 = 50.;
 
     let dim = dim as i32;
-    // println!(
-    //     "Max value {:?}",
-    //     filtered
-    //         .clone()
-    //         .into_iter()
-    //         .max_by(|a, b| { a.2.cmp(&b.2) })
-    // );
-    //filter out pixels with non important values.
 
     let mut joins = vec![];
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
@@ -115,18 +91,13 @@ pub fn stencil() -> Arc<ParArray> {
                 x: offset_lat + ((s_x + 1) as f64 * PIXEL_DIM),
                 y: offset_lon + ((s_y) as f64 * PIXEL_DIM)
             );
-            let delta_x = (p1.vincenty_distance(&p2).unwrap() / 100.) as f32;
+            let delta_x = (p1.geodesic_distance(&p2) / 100.) as f32;
 
-            //Calculate projection distortion in y
-            let p1 = point!(
-                x: offset_lat + (s_x as f64 * PIXEL_DIM),
-                y: offset_lon + (s_y as f64 * PIXEL_DIM)
-            );
             let p2 = point!(
                 x: offset_lat + ((s_x) as f64 * PIXEL_DIM),
                 y: offset_lon + ((s_y + 1) as f64 * PIXEL_DIM)
             );
-            let delta_y = (p1.vincenty_distance(&p2).unwrap() / 100.) as f32;
+            let delta_y = (p1.geodesic_distance(&p2) / 100.) as f32;
 
             // This calculates how wide and tall the stencil is
             let stencil_size_x = (garstang_cache_ref[c as usize][3000] as f32/delta_x) as i32;

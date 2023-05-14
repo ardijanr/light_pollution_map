@@ -13,7 +13,7 @@ use colorgrad::{Color, Gradient};
 
 use crate::common::{
     generate_gradient, get_cache_from_file, length, length_square_i32, write_cache_to_file,
-    ParArray,
+    ParMatrix,
 };
 
 const TEST_IMAGE: &str = "/home/ardijan/repos/bachelor_thesis/light_pollution_map/sat_dl/archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2012/41/VNP46A2_A2012041_h17v03_001_2020039030351.tif";
@@ -94,33 +94,8 @@ pub fn version_4_crawler() {
         }
     }
 
-    let mut placeholder_matrix: Vec<Vec<AtomicU64>> = vec![];
-    for _ in 0..2400 {
-        let mut line = vec![];
-        for _ in 0..2400 {
-            line.push(AtomicU64::new(0))
-        }
-        placeholder_matrix.push(line);
-    }
 
-    // for y in 0..2400{
-    //     for x in 0..2400{
-
-    //         if source_image[y][x]>0{
-    //             println!("YES THERE ARE VALUES");
-    //         }
-    //     }
-    // }
-
-    println!(
-        "Placehoder size x{}   y{} ",
-        placeholder_matrix.len(),
-        placeholder_matrix[0].len()
-    );
-
-    let image_matrix = Arc::new(ParArray {
-        array: placeholder_matrix,
-    });
+    let image_matrix = Arc::new(ParMatrix::new(2400,2400));
 
     let offset_lat: f64 = -10.;
     let offset_lon: f64 = 50.;

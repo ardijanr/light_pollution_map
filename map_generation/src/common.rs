@@ -68,26 +68,44 @@ pub fn get_image_raw_from_file() -> Option<Vec<Vec<u64>>> {
     Some(de)
 }
 
-pub struct ParArray {
-    pub array: Vec<Vec<AtomicU64>>,
+// Struct the unsafe impl is to tell the compiler "trust me"
+// It is fine in this case because we can guarantee that it
+// is thread safe due because all operations are performed
+// on atomic types
+pub struct ParMatrix {
+    inner: Vec<Vec<AtomicU64>>,
 }
 
-unsafe impl Send for ParArray {}
-unsafe impl Sync for ParArray {}
+unsafe impl Send for ParMatrix {}
+unsafe impl Sync for ParMatrix {}
 
-impl ParArray {
+impl ParMatrix {
+
+    pub fn new(size_y:usize , size_x:usize)->ParMatrix{
+        let mut matrix: Vec<Vec<AtomicU64>> = vec![];
+        for _ in 0..size_y {
+            let mut line = vec![];
+            for _ in 0..size_x {
+                line.push(AtomicU64::new(0))
+            }
+            matrix.push(line);
+        }
+
+        ParMatrix { inner: matrix }
+    }
+
     pub fn write(&self, x: usize, y: usize, v: u64) {
-        self.array[y][x].fetch_add(v, Ordering::Relaxed);
+        self.inner[y][x].fetch_add(v, Ordering::Relaxed);
     }
 
     pub fn read(&self, x: usize, y: usize) -> u64 {
-        self.array[y][x].fetch_max(0, Ordering::SeqCst)
+        self.inner[y][x].fetch_max(0, Ordering::SeqCst)
     }
 }
 
 pub fn generate_gradient() -> Gradient {
     let black = (0, 0, 0);
-    let gray = (100, 100, 100);
+    let gray = (60, 60, 60);
     let white = (255, 255, 255);
     let blue = (0, 0, 255);
     let blue_dark = (0, 0, 100);
@@ -111,23 +129,24 @@ pub fn generate_gradient() -> Gradient {
 
     colorgrad::CustomGradient::new()
         .colors(&[
-            // Color::from(black),
-            // Color::from(a),
-            // Color::from(b),
-            // Color::from(c),
-            // Color::from(d),
-            // Color::from(e),
-            // Color::from(f),
-            Color::from(gray),
-            Color::from(blue_dark),
-            Color::from(blue),
-            Color::from(green_dark),
-            Color::from(green),
-            Color::from(orange),
-            Color::from(yellow),
-            Color::from(red_dark),
-            Color::from(red),
-            Color::from(pink),
+            Color::from(black),
+            Color::from(black),
+            Color::from(a),
+            Color::from(b),
+            Color::from(c),
+            Color::from(d),
+            Color::from(e),
+            Color::from(f),
+            // Color::from(gray),
+            // Color::from(blue_dark),
+            // Color::from(blue),
+            // Color::from(green_dark),
+            // Color::from(green),
+            // Color::from(orange),
+            // Color::from(yellow),
+            // Color::from(red_dark),
+            // Color::from(red),
+            // Color::from(pink),
             // Color::from(pink),
             Color::from(white),
             //Original
