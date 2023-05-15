@@ -16,6 +16,5 @@ This repository contains:
 ![](./assets/sat_dl.png)
 
 Immediate goals:
-- Leaflet demo
 - Calibration
 - Deployment
