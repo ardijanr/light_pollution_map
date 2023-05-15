@@ -2,7 +2,6 @@ version: "3"
 services:
   demo:
     build:
-      context: ./
-      dockerfile: Containerfile
+      context: .
     ports:
       - 127.0.0.1:3000:3000
