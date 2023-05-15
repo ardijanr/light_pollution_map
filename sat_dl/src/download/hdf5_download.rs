@@ -16,8 +16,7 @@ pub async fn download(
     file_info: FileEntry,
     client: Client,
 ) -> Result<FileEntry, Box<dyn std::error::Error + Send + Sync>> {
-    // let file_path = format!("{}/{}", dl_dir, file_info.name);
-    //If the path exists and can be read by hdf5 library.
+    //If the geotiff tile exists skip downloading
     if Path::new(&file_info.tif_path()).exists() {
         println!("{} exits, skipping download!", file_info.name);
         return Ok(file_info);

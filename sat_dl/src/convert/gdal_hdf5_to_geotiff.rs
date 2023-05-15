@@ -17,9 +17,15 @@ struct TileBounds {
     south: i32,
 }
 
-fn parse_text(input: &str) -> Option<TileBounds> {
-    fn bottom_corner<'a>(input: &'a str, corner: &'a str) -> IResult<&'a str, (f32, f32)> {
-        preceded(tuple((take_until(corner), tag(corner))), parse_coord)(input)
+fn parse_metadata(input: &str) -> Option<TileBounds> {
+    fn skip_and_find_values<'a>(
+        input: &'a str,
+        match_text: &'a str,
+    ) -> IResult<&'a str, (f32, f32)> {
+        preceded(
+            tuple((take_until(match_text), tag(match_text))),
+            parse_coord,
+        )(input)
     }
 
     fn parse_coord(i: &str) -> IResult<&str, (f32, f32)> {
@@ -28,9 +34,13 @@ fn parse_text(input: &str) -> Option<TileBounds> {
         Ok((out, (first, second)))
     }
 
-    let (_, (west, north)) = bottom_corner(input, "UpperLeftPointMtrs=").ok()?;
-    let (_, (east, south)) = bottom_corner(input, "LowerRightMtrs=").ok()?;
+    let (_, (west, north)) = skip_and_find_values(input, "UpperLeftPointMtrs=").ok()?;
+    let (_, (east, south)) = skip_and_find_values(input, "LowerRightMtrs=").ok()?;
 
+    // Coordinates are in millions
+    // Do not be fooled, this is not meters but actually degrees!
+    // UpperLeftPointMtrs=(150000000.000000,-20000000.000000)
+    // LowerRightMtrs=(160000000.000000,-30000000.000000)
     Some(TileBounds {
         north: north as i32 / 1_000_000,
         south: south as i32 / 1_000_000,
@@ -45,11 +55,15 @@ pub async fn hdf5_file_to_geotif(
 ) -> Result<FileEntry, Box<dyn std::error::Error + Send + Sync>> {
     let hdf_file = hdf5::File::open(&file.hdf5_path())?;
 
+    //Query the HDF file for information inside the group
     let data = hdf_file.group("HDFEOS INFORMATION")?;
+
+    //Query the HDF file for information inside the group
     let data_string = data
         .dataset("/HDFEOS INFORMATION/StructMetadata.0")?
         .read_scalar::<FixedAscii<32000>>()?;
-    let bounds = parse_text(&data_string).ok_or("Unable to parse text")?;
+
+    let bounds = parse_metadata(&data_string).ok_or("Unable to parse text")?;
 
     let data_path = format!(
         r#"HDF5:"{}":{}"#,

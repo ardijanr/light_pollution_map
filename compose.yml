@@ -1,11 +1,26 @@
 version: "3"
 services:
+  build_image:
+    build:
+      context: ./
+      dockerfile: Containerfile
+    image: build_image
 
   sat_dl:
     build:
-      context: ./sat_dl
-      dockerfile: Containerfile
-    container_name: sat_dl
+      context: .
+      dockerfile: dl_service.dockerfile
     volumes:
-      - ./sat_dl/archive:/downloader/archive:Z
+      - ./archive://archive:Z
+    depends_on:
+      - build_image
+
+  map_generation:
+    build:
+      context: .
+      dockerfile: map_gen.dockerfile
+    volumes:
+      - ./archive:/archive:Z
+    depends_on:
+      - build_image
 

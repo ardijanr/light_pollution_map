@@ -1,0 +1,7 @@
+./target
+./Containerfile
+./compose.yml
+./.dockerignore
+./*.dockerfile
+./sat_dl/archive
+./map_generation/cache

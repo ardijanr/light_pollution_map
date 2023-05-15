@@ -1,0 +1,4 @@
+version: "3"
+services:
+  leaflet_demo:
+    image: ghcr.io/ardijanr/light_pollution_map:pr-6
