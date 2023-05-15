@@ -1,4 +1,6 @@
 [workspace]
+name = "light_pollution_map"
+
 members = [
     "sat_dl",
     "garstang",
@@ -6,9 +8,6 @@ members = [
 ]
 
 [workspace.package]
-name = "light_pollution_map"
 version = "0.1.0"
 edition = "2021"
 authors = ["Ardijan Rexhaj"]
-
-# [dependencies]

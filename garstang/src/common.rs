@@ -1,5 +1,3 @@
-use std::vec;
-
 pub type Vector3D = (f64, f64, f64);
 pub type Point3D = (f64, f64, f64);
 

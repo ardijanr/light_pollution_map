@@ -105,19 +105,19 @@ impl ParMatrix {
 
 pub fn generate_gradient() -> Gradient {
     let black = (0, 0, 0);
-    let gray = (60, 60, 60);
-    let white = (255, 255, 255);
-    let blue = (0, 0, 255);
-    let blue_dark = (0, 0, 100);
-    let green = (0, 255, 0);
-    let green_dark = (0, 100, 0);
-    let yellow = (255, 255, 0);
-    let yellow = (255, 255, 100);
-    let orange = (255, 150, 0);
-    let red_dark = (150, 0, 0);
-    let red = (255, 0, 0);
-    let pink = (255, 150, 150);
-    let dark_white = (180, 180, 180);
+    // let gray = (60, 60, 60);
+    // let white = (255, 255, 255);
+    // let blue = (0, 0, 255);
+    // let blue_dark = (0, 0, 100);
+    // let green = (0, 255, 0);
+    // let green_dark = (0, 100, 0);
+    // let yellow = (255, 255, 0);
+    // let yellow = (255, 255, 100);
+    // let orange = (255, 150, 0);
+    // let red_dark = (150, 0, 0);
+    // let red = (255, 0, 0);
+    // let pink = (255, 150, 150);
+    // let dark_white = (180, 180, 180);
     let white = (255, 255, 255);
 
     let a = (110, 69, 0);

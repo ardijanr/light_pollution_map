@@ -12,7 +12,8 @@ use crate::common::{
     write_cache_to_file, ParMatrix,
 };
 
-const TEST_IMAGE: &str = "/home/ardijan/repos/bachelor_thesis/light_pollution_map/sat_dl/archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2012/41/VNP46A2_A2012041_h17v03_001_2020039030351.tif";
+// This will change for deployment
+const TEST_IMAGE: &str = "./sat_dl/archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2012/41/VNP46A2_A2012041_h17v03_001_2020039030351.tif";
 const PIXEL_DIM: f64 = 0.004166666666666666609;
 const MAX_DIST: usize = 3000;
 
@@ -162,9 +163,7 @@ pub fn generate_image() {
     for y in 0..2400 as usize {
         for x in 0..2400 as usize {
             let scaled = (result.read(x, y) as f64).sqrt() / 355.;
-            // if scaled > 0. && y % 500 == 0 {
-            //     // println!("scaled {scaled}");
-            // }
+
             let color = gradient.at(scaled).to_rgba8();
             let mut alpha: u32 = (scaled * 5000.) as u32;
             if alpha > 255 {

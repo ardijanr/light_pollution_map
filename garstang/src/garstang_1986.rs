@@ -101,8 +101,6 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64, obs_direction: Vector3
                 };
 
                 fn extinction_function(
-                    start: Point3D,
-                    end: Point3D,
                     a_local: f64,
                     h: f64,
                     A_local: f64,
@@ -118,7 +116,7 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64, obs_direction: Vector3
                     };
 
                     exp(-N_m * σ_r * exp(-c * H) * p() * sec(angle))
-                };
+                }
 
                 // Double scattering function
                 let double_scattering = || -> f64 {
@@ -131,8 +129,8 @@ pub fn garstang_1986_calc(LP: f64, distance: f64, H: f64, obs_direction: Vector3
                 };
 
                 let frac_s = s.powi(-2);
-                let ef_xq = extinction_function(X, Q, a, h, 0., N_m, σ_r, H, Ψ);
-                let ef_qo = extinction_function(Q, O, a, h, O.2, N_m, σ_r, H, z);
+                let ef_xq = extinction_function( a, h, 0., N_m, σ_r, H, Ψ);
+                let ef_qo = extinction_function( a, h, O.2, N_m, σ_r, H, z);
                 // let rest = (exp(-c * h) * 3. * ((1. + (θ + Φ).cos().powi(2)) / (16. * π)) + exp(-alpha * h) * 11.11 * K * f_theta(θ + Φ));
 
                 let _d_scattering = double_scattering();

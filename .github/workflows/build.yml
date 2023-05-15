@@ -15,6 +15,7 @@ jobs:
       run: |
           echo "${{ secrets.TOKEN }}" >> ./sat_dl/.env
     - name: Build the Docker image
-      run: docker-compose up --build --detach
-    - name: Is Container Running
-      run: sleep 5 && result=$( docker ps --format "{{.Status}}" ) && if [[ -n "$result" ]]; then exit 0 ; else exit 1; fi
+      run: docker-compose up --build
+    # No need to check if running, this will be replaced by deployment to packages
+    # - name: Is Container Running
+    #   run: sleep 5 && result=$( docker ps --format "{{.Status}}" ) && if [[ -n "$result" ]]; then exit 0 ; else exit 1; fi
