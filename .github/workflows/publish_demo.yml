@@ -16,8 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    env:
-      working-directory: ./leaflet_demo/
+
 
     steps:
       - name: Checkout repository
