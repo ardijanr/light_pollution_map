@@ -208,6 +208,7 @@ pub fn generate_image() {
 
         let strip = convert_results_to_rgb(result.read_row(i as usize), &gradient);
         println!("Strip length is : {}", strip.len());
+        println!("Strip length is : {:?}", result.dimensions());
         image.write_strip(&strip).unwrap();
     }
     image.finish().unwrap();

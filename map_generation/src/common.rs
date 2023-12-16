@@ -102,12 +102,17 @@ impl ParMatrix {
     }
 
     pub fn read_row(&self, y: usize) -> Vec<u32> {
-        let mut res = vec![0; self.inner.len()];
-        for x in 0..self.inner.len() {
+        let width = self.inner[0].len();
+        let mut res = vec![0; width];
+        for x in 0..width {
             res[x] = self.inner[y][x].fetch_max(0, Ordering::SeqCst);
         }
 
         res
+    }
+
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.inner.len(), self.inner[0].len())
     }
 }
 
