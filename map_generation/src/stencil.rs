@@ -146,7 +146,7 @@ pub fn stencil() -> Arc<ParMatrix> {
                     result_image_ref.write(
                         x as usize,
                         y as usize,
-                        garstang_cache_ref[c as usize][dist] as u64,
+                        garstang_cache_ref[c as usize][dist] as u32,
                     );
                 }
             }
@@ -164,15 +164,16 @@ pub fn stencil() -> Arc<ParMatrix> {
     result_image
 }
 
+// This should be done in paralell
 pub fn generate_image() {
-    let mut generated_image: RgbaImage = ImageBuffer::new(2400, 2400);
+    let mut generated_image: RgbaImage = ImageBuffer::new(86400, 36000);
 
     let gradient = generate_gradient();
 
     let result = stencil();
 
-    for y in 0..2400 as usize {
-        for x in 0..2400 as usize {
+    for y in 0..86400 as usize {
+        for x in 0..36000 as usize {
             let scaled = (result.read(x, y) as f64).sqrt() / 355.;
 
             let color = gradient.at(scaled).to_rgba8();
@@ -186,7 +187,7 @@ pub fn generate_image() {
     }
 
     generated_image
-        .save(format!("./map_generation/tests/uk_test.png"))
+        .save(format!("./map_generation/tests/uk_test1.tif"))
         .unwrap();
 }
 

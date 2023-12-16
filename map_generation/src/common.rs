@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use colorgrad::{Color, Gradient};
 
@@ -73,20 +73,19 @@ pub fn get_image_raw_from_file() -> Option<Vec<Vec<u64>>> {
 // is thread safe due because all operations are performed
 // on atomic types
 pub struct ParMatrix {
-    inner: Vec<Vec<AtomicU64>>,
+    inner: Vec<Vec<AtomicU32>>,
 }
 
 unsafe impl Send for ParMatrix {}
 unsafe impl Sync for ParMatrix {}
 
 impl ParMatrix {
-
-    pub fn new(size_y:usize , size_x:usize)->ParMatrix{
-        let mut matrix: Vec<Vec<AtomicU64>> = vec![];
+    pub fn new(size_y: usize, size_x: usize) -> ParMatrix {
+        let mut matrix: Vec<Vec<AtomicU32>> = vec![];
         for _ in 0..size_y {
             let mut line = vec![];
             for _ in 0..size_x {
-                line.push(AtomicU64::new(0))
+                line.push(AtomicU32::new(0))
             }
             matrix.push(line);
         }
@@ -94,11 +93,11 @@ impl ParMatrix {
         ParMatrix { inner: matrix }
     }
 
-    pub fn write(&self, x: usize, y: usize, v: u64) {
+    pub fn write(&self, x: usize, y: usize, v: u32) {
         self.inner[y][x].fetch_add(v, Ordering::Relaxed);
     }
 
-    pub fn read(&self, x: usize, y: usize) -> u64 {
+    pub fn read(&self, x: usize, y: usize) -> u32 {
         self.inner[y][x].fetch_max(0, Ordering::SeqCst)
     }
 }
