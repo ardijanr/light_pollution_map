@@ -11,7 +11,7 @@ use super::{
 use crate::{convert::gdal_hdf5_to_geotiff::merge_geotiffs, download_dir, PRODUCT_URL};
 
 //Number of parallel downloads
-const PD: usize = 1;
+const PD: usize = 5;
 
 //Fetches directory
 pub async fn get_dir_content(
@@ -97,7 +97,7 @@ pub async fn dl_date_and_convert(
 
     let mut set = JoinSet::new();
 
-    let files = &files[0..4];
+    // let files = &files[0..4];
 
     let _: Vec<_> = files
         .chunks(files.len() / PD)

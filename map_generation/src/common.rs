@@ -100,6 +100,15 @@ impl ParMatrix {
     pub fn read(&self, x: usize, y: usize) -> u32 {
         self.inner[y][x].fetch_max(0, Ordering::SeqCst)
     }
+
+    pub fn read_row(&self, y: usize) -> Vec<u32> {
+        let mut res = vec![0; self.inner.len()];
+        for x in 0..self.inner.len() {
+            res[x] = self.inner[y][x].fetch_max(0, Ordering::SeqCst);
+        }
+
+        res
+    }
 }
 
 pub fn generate_gradient() -> Gradient {

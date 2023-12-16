@@ -1,10 +1,15 @@
+use colorgrad::Gradient;
 use image::io::Reader;
-use image::{open, ImageBuffer, ImageFormat, RgbaImage};
+use image::{open, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::AddAssign;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::{thread, vec};
+use tiff::decoder::{Decoder, DecodingResult};
+use tiff::encoder::colortype::{ColorType, RGB8};
+use tiff::encoder::{self, TiffEncoder};
 
 use geo::point;
 use geo::prelude::*;
@@ -15,7 +20,7 @@ use crate::common::{
 
 // This will change for deployment
 const TEST_IMAGE: &str =
-    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/335/merged_data_2023_335.tif";
+    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/336/merged_data_2023_336.tif";
 const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
@@ -91,7 +96,11 @@ pub fn stencil() -> Arc<ParMatrix> {
                 panic!("POISONED LOCK")
             }
 
-            let (s_x, s_y, c) = tmp;
+            let (s_x, s_y, mut c) = tmp;
+            // If the light value is too great, TODO remove this
+            if c >= 20000 {
+                c = 20000 - 1;
+            }
 
             //Calculate projection distortion in x
             let p1 = point!(
@@ -164,31 +173,80 @@ pub fn stencil() -> Arc<ParMatrix> {
     result_image
 }
 
-// This should be done in paralell
+// fn tiff(results: Vec<Vec<u8>>) {
+//     let width = 86400;
+//     let height = 36000;
+//     let file = File::create("large_image.tiff").unwrap();
+//     let mut w = BufWriter::new(file);
+
+//     let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
+//     let mut image = encoder.new_image::<RGB8>(width, height).unwrap();
+//     image.rows_per_strip(1).unwrap();
+
+//     for i in 0..results.len() {
+//         image.write_data();
+//         // image.write_strip(&results[i]).unwrap();
+//     }
+//     image.finish().unwrap();
+// }
+
 pub fn generate_image() {
-    let mut generated_image: RgbaImage = ImageBuffer::new(86400, 36000);
+    let width = 86400;
+    let height = 36000;
+    let file = File::create("large_image.tiff").unwrap();
+    let w = BufWriter::new(file);
+
+    let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
+    let mut image = encoder.new_image::<RGB8>(width, height).unwrap();
+    image.rows_per_strip(1).unwrap();
 
     let gradient = generate_gradient();
-
     let result = stencil();
 
-    for y in 0..86400 as usize {
-        for x in 0..36000 as usize {
-            let scaled = (result.read(x, y) as f64).sqrt() / 355.;
+    for i in 0..height {
+        // println!("{}", &i);
 
-            let color = gradient.at(scaled).to_rgba8();
-            let mut alpha: u32 = (scaled * 5000.) as u32;
-            if alpha > 255 {
-                alpha = 254;
-            }
-            generated_image.get_pixel_mut(x as u32, y as u32).0 =
-                [color[0], color[1], color[2], alpha as u8];
-        }
+        let strip = convert_results_to_rgb(result.read_row(i as usize), &gradient);
+        println!("Strip length is : {}", strip.len());
+        image.write_strip(&strip).unwrap();
+    }
+    image.finish().unwrap();
+
+    // Original code below
+
+    // for y in 0..86400 as usize {
+    //     for x in 0..36000 as usize {
+    //         let scaled = (result.read(x, y) as f64).sqrt() / 355.;
+
+    //         let color = gradient.at(scaled).to_rgba8();
+    //         let mut alpha: u32 = (scaled * 5000.) as u32;
+    //         if alpha > 255 {
+    //             alpha = 254;
+    //         }
+    //         generated_image.get_pixel_mut(x as u32, y as u32).0 =
+    //             [color[0], color[1], color[2], alpha as u8];
+    //     }
+    // }
+
+    // generated_image
+    //     .save(format!("./map_generation/tests/uk_test1.tif"))
+    //     .unwrap();
+}
+
+// The input and output look the same, but the output is 3x longer
+fn convert_results_to_rgb(result: Vec<u32>, gradient: &Gradient) -> Vec<u8> {
+    let mut output = vec![];
+
+    for i in result {
+        let scaled = (i as f64).sqrt() / 355.;
+        let color = gradient.at(scaled).to_rgba8();
+
+        output.push(color[0]);
+        output.push(color[1]);
+        output.push(color[2]);
     }
 
-    generated_image
-        .save(format!("./map_generation/tests/uk_test1.tif"))
-        .unwrap();
+    output
 }
 
 fn get_or_create_garstang_cache() -> Vec<Vec<u32>> {
@@ -246,3 +304,31 @@ fn get_or_create_garstang_cache() -> Vec<Vec<u32>> {
     write_cache_to_file(garstang_cache.clone());
     garstang_cache
 }
+
+// This should be done in paralell
+// pub fn generate_image() {
+//     create_and_save_empty_image()
+//     let mut generated_image: RgbaImage = ImageBuffer::new(86400, 36000);
+
+//     let gradient = generate_gradient();
+
+//     let result = stencil();
+
+//     for y in 0..86400 as usize {
+//         for x in 0..36000 as usize {
+//             let scaled = (result.read(x, y) as f64).sqrt() / 355.;
+
+//             let color = gradient.at(scaled).to_rgba8();
+//             let mut alpha: u32 = (scaled * 5000.) as u32;
+//             if alpha > 255 {
+//                 alpha = 254;
+//             }
+//             generated_image.get_pixel_mut(x as u32, y as u32).0 =
+//                 [color[0], color[1], color[2], alpha as u8];
+//         }
+//     }
+
+//     generated_image
+//         .save(format!("./map_generation/tests/uk_test1.tif"))
+//         .unwrap();
+// }
