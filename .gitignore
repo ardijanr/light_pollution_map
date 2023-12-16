@@ -5,11 +5,14 @@
 [Cc]argo.lock
 [Nn]ode_modules
 
+
 .vscode
 .env
 Cargo.lock
 flamegraph.svg
 perf.data
 map_generation/cache/garstang_cache.json
-map_generation/tests/*
+map_generation/test*
+heaptrack*
+
 leaflet_demo/package-lock.json

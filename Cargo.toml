@@ -7,6 +7,14 @@ members = [
     "map_generation"
 ]
 
+[profile.dev]
+debug = true
+opt-level = 1
+
+[profile.release]
+debug = true
+opt-level = 1
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

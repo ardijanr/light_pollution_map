@@ -1,26 +1,36 @@
-use image::{open, ImageBuffer, RgbaImage};
-use std::ops::{AddAssign};
+use image::io::Reader;
+use image::{open, ImageBuffer, ImageFormat, RgbaImage};
+use std::fs::File;
+use std::io::BufReader;
+use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
 use std::{thread, vec};
 
 use geo::point;
 use geo::prelude::*;
 
-
 use crate::common::{
-    generate_gradient, get_cache_from_file,  length,
-    write_cache_to_file, ParMatrix,
+    generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
 
 // This will change for deployment
-const TEST_IMAGE: &str = "./sat_dl/archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2012/41/VNP46A2_A2012041_h17v03_001_2020039030351.tif";
-const PIXEL_DIM: f64 = 0.004166666666666666609;
+const TEST_IMAGE: &str =
+    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/335/merged_data_2023_335.tif";
+const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
 pub fn stencil() -> Arc<ParMatrix> {
     //Load the tile
-    let data_image = open(TEST_IMAGE).unwrap().to_luma16();
-    //Get the dimention of the tile 2400
+    let input_file = File::open(TEST_IMAGE).expect("Failed to open file");
+
+    // Create an image reader with no memory limits
+    let mut img_reader = Reader::new(BufReader::new(input_file));
+    img_reader.no_limits();
+    img_reader.set_format(ImageFormat::Tiff);
+
+    let data_image = img_reader.decode().unwrap().to_luma16();
+
+    //Get the dimension of the tile 2400
     let dim = data_image.dimensions().0;
 
     let garstang_cache = Arc::new(get_or_create_garstang_cache());
@@ -31,18 +41,19 @@ pub fn stencil() -> Arc<ParMatrix> {
         .enumerate_pixels()
         .filter_map(|(x, y, c)| {
             //The value 10 was set to reduce noise
-            if c[0] == u16::MAX || c[0] < 1 {
+            if c[0] == u16::MAX || c[0] < 5 {
                 return None;
             }
             Some((x, y, c[0]))
         })
         .collect::<Vec<(u32, u32, u16)>>();
 
+    let filtered = Arc::new(filtered);
 
     // This type is being wrapped in two other types at the same time
     // Par matrix ensures interior mutability is possible
     // While ARC allows sharing of a refrence between threads.
-    let result_image = Arc::new(ParMatrix::new(2400,2400));
+    let result_image = Arc::new(ParMatrix::new(36000, 86400));
 
     let offset_lat: f64 = -10.;
     let offset_lon: f64 = 50.;
@@ -53,7 +64,7 @@ pub fn stencil() -> Arc<ParMatrix> {
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
 
     //Number of threads to spawn
-    for _ in 0..24 {
+    for _ in 0..32 {
         //Shared index such that each thread can iterate the counter to the next workload
         let cwi = current_working_index.clone();
         //These are the relevant pixels this is the copy of an Arc reference, not the actual data.
@@ -67,15 +78,14 @@ pub fn stencil() -> Arc<ParMatrix> {
         let garstang_cache_ref = garstang_cache.clone();
 
         joins.push(thread::spawn(move || loop {
-            let tmp;
-            // let a;
+            let tmp: (u32, u32, u16);
 
             if let Ok(mut i) = cwi.write() {
                 if i.ge(&data_len) {
                     break;
                 }
-                // a = i.clone();
-                tmp = data[i.clone()];
+
+                tmp = data[*i];
                 i.add_assign(1);
             } else {
                 panic!("POISONED LOCK")
@@ -101,8 +111,8 @@ pub fn stencil() -> Arc<ParMatrix> {
             let delta_y = (p1.geodesic_distance(&p2) / 100.) as f32;
 
             // This calculates how wide and tall the stencil is
-            let stencil_size_x = (garstang_cache_ref[c as usize][3000] as f32/delta_x) as i32;
-            let stencil_size_y = (garstang_cache_ref[c as usize][3000] as f32/delta_y) as i32;
+            let stencil_size_x = (garstang_cache_ref[c as usize][3000] as f32 / delta_x) as i32;
+            let stencil_size_y = (garstang_cache_ref[c as usize][3000] as f32 / delta_y) as i32;
 
             let s_x = s_x as i32;
             let s_y = s_y as i32;
@@ -110,7 +120,10 @@ pub fn stencil() -> Arc<ParMatrix> {
             // Generates a stencil by writing directly to atomic array
             for y_stencil_index in -stencil_size_y..stencil_size_y {
                 for x_stencil_index in -stencil_size_x..stencil_size_x {
-                    let dist = length(delta_x * x_stencil_index as f32, delta_y * y_stencil_index as f32);
+                    let dist = length(
+                        delta_x * x_stencil_index as f32,
+                        delta_y * y_stencil_index as f32,
+                    );
 
                     //If the distance is greater than 299.9km
                     if dist > 2999. {
@@ -145,13 +158,11 @@ pub fn stencil() -> Arc<ParMatrix> {
 
     //Wait for all threads to finish
     for i in joins {
-        _= i.join();
+        _ = i.join();
     }
 
     result_image
 }
-
-
 
 pub fn generate_image() {
     let mut generated_image: RgbaImage = ImageBuffer::new(2400, 2400);
@@ -169,7 +180,8 @@ pub fn generate_image() {
             if alpha > 255 {
                 alpha = 254;
             }
-            generated_image.get_pixel_mut(x as u32, y as u32).0 = [color[0], color[1], color[2], alpha as u8];
+            generated_image.get_pixel_mut(x as u32, y as u32).0 =
+                [color[0], color[1], color[2], alpha as u8];
         }
     }
 
@@ -178,8 +190,7 @@ pub fn generate_image() {
         .unwrap();
 }
 
-
-fn get_or_create_garstang_cache()->Vec<Vec<u32>>{
+fn get_or_create_garstang_cache() -> Vec<Vec<u32>> {
     let mut garstang_cache = vec![vec![0; MAX_DIST + 1]; 20_000];
     let dir_xy = 1. / (2. as f64).sqrt();
     let obs_dir: (f64, f64, f64) = (-dir_xy, 0., dir_xy);
@@ -196,17 +207,16 @@ fn get_or_create_garstang_cache()->Vec<Vec<u32>>{
 
     for light in 0..20_000 {
         for dist in 0..MAX_DIST {
-
             // DNB VIIRS data is in nano watts per square cm
             // Garstang model uses total luminosity in lumen
             // Conversion from nW/cm^2 to l/m^2 is 0.000000001*683*100*100 = 0.00683
             // Total luminosity is then 0.00683*750*750 = 3841.875
             let lp = garstang::garstang_1989_calc(
                 (light as f64) * 3841.875 / 0.15, // LP
-                (dist as f64) / 10., // Distance in km from hecto meters
-                0., //H
-                0., //A
-                obs_dir, //dir
+                (dist as f64) / 10.,              // Distance in km from hecto meters
+                0.,                               //H
+                0.,                               //A
+                obs_dir,                          //dir
             ) * 100000.; //Scale the output since we need the more significant figures and it will be saved as a u64.
 
             // If the value is below threshold set last index to the max relevant distance
@@ -224,9 +234,11 @@ fn get_or_create_garstang_cache()->Vec<Vec<u32>>{
         }
         if garstang_cache[light][MAX_DIST] == 0 && light % 10 == 0 {
             garstang_cache[light][MAX_DIST] = MAX_DIST as u32 - 1;
-            println!("source light: {light}, SETTING MAX INDEX: {MAX_DIST} light_max: {} ,light_min: {}", garstang_cache[light][0], garstang_cache[light][2999]);
+            println!(
+                "source light: {light}, SETTING MAX INDEX: {MAX_DIST} light_max: {} ,light_min: {}",
+                garstang_cache[light][0], garstang_cache[light][2999]
+            );
         }
-
     }
 
     //Save the cache to file such that this calculation can be skipped in future
