@@ -22,7 +22,7 @@ use geo::prelude::*;
 use crate::common::{
     generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
-const THREADS: usize = 28;
+const THREADS: usize = 15;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
 // const IMG_HEIGHT: usize = 36000;
@@ -73,7 +73,8 @@ pub fn stencil(img_width: usize, img_height: usize) -> Arc<ParMatrix> {
     // While ARC allows sharing of a refrence between threads.
     let result_image = Arc::new(ParMatrix::new(img_height, img_width));
 
-    let dim = dim as i32;
+    let dim_x = img_width as i32;
+    let dim_y = img_height as i32;
 
     let mut joins = vec![];
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
@@ -162,7 +163,7 @@ pub fn stencil(img_width: usize, img_height: usize) -> Arc<ParMatrix> {
                     let x = s_x + x_stencil_index;
                     let y = s_y + y_stencil_index;
 
-                    if x < 0 || x >= dim || y < 0 || y >= dim {
+                    if x < 0 || x >= dim_x || y < 0 || y >= dim_y {
                         continue;
                     }
 
