@@ -10,6 +10,7 @@ use std::{thread, vec};
 use tiff::decoder::{Decoder, DecodingResult};
 use tiff::encoder::colortype::{ColorType, RGB8};
 use tiff::encoder::{self, TiffEncoder};
+use tiff::tags::Tag;
 
 use geo::point;
 use geo::prelude::*;
@@ -198,6 +199,11 @@ pub fn generate_image() {
 
     let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
     let mut image = encoder.new_image::<RGB8>(width, height).unwrap();
+    image
+        .encoder()
+        .write_tag(Tag::Artist, "Image-tiff")
+        .unwrap();
+
     image.rows_per_strip(1).unwrap();
 
     let gradient = generate_gradient();
