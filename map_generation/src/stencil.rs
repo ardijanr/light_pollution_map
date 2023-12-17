@@ -22,7 +22,7 @@ use geo::prelude::*;
 use crate::common::{
     generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
-const THREADS: usize = 15;
+const THREADS: usize = 30;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
 // const IMG_HEIGHT: usize = 36000;
@@ -33,7 +33,7 @@ const THREADS: usize = 15;
 
 // This will change for deployment
 const TEST_IMAGE: &str =
-    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/336/merged_data_2023_336.tif";
+    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/337/VNP46A2_A2023337_h19v04_001_2023346010350.tif";
 const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
@@ -49,7 +49,7 @@ pub fn stencil(img_width: usize, img_height: usize) -> Arc<ParMatrix> {
     let data_image = img_reader.decode().unwrap().to_luma16();
 
     //Get the dimension of the tile 2400
-    let dim = data_image.dimensions().0;
+    // let dim = data_image.dimensions().0;
 
     let garstang_cache = Arc::new(get_or_create_garstang_cache());
 
@@ -211,7 +211,7 @@ pub fn generate_image() {
     // receives finished results however it must wait for the correct ordered
     // result to finish before it can write it
     let writer_thread = thread::spawn(move || {
-        let file = File::create("map_generation/tests/large_image.tiff").unwrap();
+        let file = File::create("map_generation/tests/single_tile_test.tiff").unwrap();
         let w = BufWriter::new(file);
 
         let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
