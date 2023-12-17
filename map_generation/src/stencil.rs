@@ -1,11 +1,12 @@
 use colorgrad::Gradient;
 use image::io::Reader;
 use image::{open, ImageBuffer, ImageFormat, Rgba, RgbaImage};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::AddAssign;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc, Arc, RwLock};
 use std::{thread, vec};
 use tiff::decoder::{Decoder, DecodingResult};
 use tiff::encoder::colortype::{ColorType, RGB8};
@@ -18,6 +19,8 @@ use geo::prelude::*;
 use crate::common::{
     generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
+
+const THREADS: usize = 30;
 
 // This will change for deployment
 const TEST_IMAGE: &str =
@@ -70,7 +73,7 @@ pub fn stencil() -> Arc<ParMatrix> {
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
 
     //Number of threads to spawn
-    for _ in 0..32 {
+    for _ in 0..THREADS {
         //Shared index such that each thread can iterate the counter to the next workload
         let cwi = current_working_index.clone();
         //These are the relevant pixels this is the copy of an Arc reference, not the actual data.
@@ -192,6 +195,111 @@ pub fn stencil() -> Arc<ParMatrix> {
 // }
 
 pub fn generate_image() {
+    let mut joins = vec![];
+
+    let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
+
+    let (tx, rx) = mpsc::channel::<(usize, Vec<u8>)>();
+    let gradient = Arc::new(generate_gradient());
+    let result = stencil();
+
+    let writer_thread = thread::spawn(move || {
+        let width = 86400;
+        let height = 36000;
+        let file = File::create("large_image.tiff").unwrap();
+        let w = BufWriter::new(file);
+
+        let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
+        let mut image = encoder.new_image::<RGB8>(width, height).unwrap();
+        image
+            .encoder()
+            .write_tag(Tag::Artist, "Image-tiff")
+            .unwrap();
+
+        image.rows_per_strip(1).unwrap();
+
+        // receives finished results however it must wait for the correct ordered
+        // result to finish before it can write it
+
+        // block on read
+        let mut strip_buffer = HashMap::new();
+        let mut needed_row = 0;
+
+        while let Ok((strip_row_number, strip)) = rx.recv() {
+            if needed_row != strip_row_number {
+                strip_buffer.insert(strip_row_number, strip);
+            } else {
+                image.write_strip(&strip).unwrap();
+                needed_row += 1;
+            }
+
+            while let Some(buffer_strip) = strip_buffer.get(&needed_row) {
+                image.write_strip(buffer_strip).unwrap();
+                needed_row += 1;
+            }
+        }
+    });
+
+    for _ in 0..THREADS - 1 {
+        let cwi = current_working_index.clone();
+        let ltx = tx.clone();
+        let res = result.clone();
+        let grad = gradient.clone();
+
+        // Send results and what index it belongs to
+        joins.push(thread::spawn(move || loop {
+            let index: usize;
+            if let Ok(mut i) = cwi.write() {
+                index = *i;
+                i.add_assign(1);
+            } else {
+                panic!("POISONED LOCK")
+            }
+
+            let strip = convert_results_to_rgb(res.read_row(index), &grad);
+
+            ltx.send((index, strip)).unwrap();
+        }));
+    }
+
+    for j in joins {
+        j.join().unwrap();
+    }
+
+    writer_thread.join().unwrap();
+
+    // for i in 0..height {
+    //     // println!("{}", &i);
+
+    //     let strip = convert_results_to_rgb(result.read_row(i as usize), &gradient);
+    //     println!("Strip length is : {}", strip.len());
+    //     println!("Strip length is : {:?}", result.dimensions());
+    //     image.write_strip(&strip).unwrap();
+    // }
+    // image.finish().unwrap();
+
+    // Original code below
+
+    // for y in 0..86400 as usize {
+    //     for x in 0..36000 as usize {
+    //         let scaled = (result.read(x, y) as f64).sqrt() / 355.;
+
+    //         let color = gradient.at(scaled).to_rgba8();
+    //         let mut alpha: u32 = (scaled * 5000.) as u32;
+    //         if alpha > 255 {
+    //             alpha = 254;
+    //         }
+    //         generated_image.get_pixel_mut(x as u32, y as u32).0 =
+    //             [color[0], color[1], color[2], alpha as u8];
+    //     }
+    // }
+
+    // generated_image
+    //     .save(format!("./map_generation/tests/uk_test1.tif"))
+    //     .unwrap();
+}
+
+pub fn generate_image_multithreaded_read() {
     let width = 86400;
     let height = 36000;
     let file = File::create("large_image.tiff").unwrap();
@@ -208,6 +316,8 @@ pub fn generate_image() {
 
     let gradient = generate_gradient();
     let result = stencil();
+
+    //n threads will in paralell read off the data calling convert results to rgb
 
     for i in 0..height {
         // println!("{}", &i);
