@@ -24,7 +24,7 @@ const THREADS: usize = 30;
 
 // This will change for deployment
 const TEST_IMAGE: &str =
-    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/336/merged_data_2023_336.tif";
+    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/335/merged_data_2023_335.tif";
 const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
@@ -238,6 +238,8 @@ pub fn generate_image() {
                 needed_row += 1;
             }
         }
+
+        image.finish().unwrap();
     });
 
     for _ in 0..THREADS - 1 {
