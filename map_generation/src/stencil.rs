@@ -195,14 +195,15 @@ pub fn stencil() -> Arc<ParMatrix> {
 // }
 
 pub fn generate_image() {
-    let mut joins = vec![];
-
-    let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
-
-    let (tx, rx) = mpsc::channel::<(usize, Vec<u8>)>();
     let gradient = Arc::new(generate_gradient());
     let result = stencil();
 
+    let (tx, rx) = mpsc::channel::<(usize, Vec<u8>)>();
+    let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
+    let mut reader_threads = vec![];
+
+    // receives finished results however it must wait for the correct ordered
+    // result to finish before it can write it
     let writer_thread = thread::spawn(move || {
         let width = 86400;
         let height = 36000;
@@ -218,10 +219,6 @@ pub fn generate_image() {
 
         image.rows_per_strip(1).unwrap();
 
-        // receives finished results however it must wait for the correct ordered
-        // result to finish before it can write it
-
-        // block on read
         let mut strip_buffer = HashMap::new();
         let mut needed_row = 0;
 
@@ -249,10 +246,13 @@ pub fn generate_image() {
         let grad = gradient.clone();
 
         // Send results and what index it belongs to
-        joins.push(thread::spawn(move || loop {
+        reader_threads.push(thread::spawn(move || loop {
             let index: usize;
             if let Ok(mut i) = cwi.write() {
                 index = *i;
+                if index >= 36000 {
+                    break;
+                }
                 i.add_assign(1);
             } else {
                 panic!("POISONED LOCK")
@@ -264,7 +264,7 @@ pub fn generate_image() {
         }));
     }
 
-    for j in joins {
+    for j in reader_threads {
         j.join().unwrap();
     }
 
