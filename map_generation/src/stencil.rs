@@ -22,7 +22,7 @@ use geo::prelude::*;
 use crate::common::{
     generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
-const THREADS: usize = 30;
+const THREADS: usize = 15;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
 // const IMG_HEIGHT: usize = 36000;
@@ -32,8 +32,7 @@ const THREADS: usize = 30;
 // const IMG_HEIGHT: usize = 36000;
 
 // This will change for deployment
-const TEST_IMAGE: &str =
-    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/337/VNP46A2_A2023337_h19v04_001_2023346010350.tif";
+const TEST_IMAGE: &str = "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/235/VNP46A2_A2023235_h19v04_001_2023243095926.tif";
 const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
