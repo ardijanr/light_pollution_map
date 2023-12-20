@@ -11,5 +11,5 @@ pub use stencil::*;
 // static GLOBAL: System = System;
 
 fn main() {
-    generate_image();
+    generate_image_gray();
 }

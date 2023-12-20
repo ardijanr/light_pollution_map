@@ -1,5 +1,6 @@
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{Read, Write};
+use std::path::Path;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use colorgrad::{Color, Gradient};
@@ -37,9 +38,18 @@ pub fn get_stencil_from_file(fname: String) -> Vec<(PixelIndex, f64)> {
 }
 
 pub fn write_cache_to_file(cache: Vec<Vec<u32>>) {
+    let cache_location = "./map_generation/cache";
+
+    if !Path::new(cache_location).exists() {
+        match fs::create_dir(&cache_location) {
+            Ok(_) => (),
+            Err(e) => println!("Error creating folder: {}", e),
+        }
+    }
+
     let cache = serde_json::to_string(&cache).unwrap();
 
-    let mut f = File::create(format!("./map_generation/cache/garstang_cache.json")).unwrap();
+    let mut f = File::create(format!("{cache_location}/garstang_cache.json")).unwrap();
     f.write_all(cache.as_bytes()).unwrap();
 }
 

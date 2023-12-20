@@ -12,7 +12,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{thread, vec};
 use tiff::decoder::{Decoder, DecodingResult};
-use tiff::encoder::colortype::{ColorType, RGB8};
+use tiff::encoder::colortype::{ColorType, Gray32, RGB8};
 use tiff::encoder::{self, TiffEncoder};
 use tiff::tags::Tag;
 
@@ -22,7 +22,7 @@ use geo::prelude::*;
 use crate::common::{
     generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
 };
-const THREADS: usize = 30;
+const THREADS: usize = 48;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
 // const IMG_HEIGHT: usize = 36000;
@@ -32,8 +32,7 @@ const THREADS: usize = 30;
 // const IMG_HEIGHT: usize = 36000;
 
 // This will change for deployment
-const TEST_IMAGE: &str =
-    "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/337/VNP46A2_A2023337_h19v04_001_2023346010350.tif";
+const TEST_IMAGE: &str = "archive/VNP46A2/Gap_Filled_DNB_BRDF-Corrected_NTL/2023/235/VNP46A2_A2023235_h19v04_001_2023243095926.tif";
 const PIXEL_DIM: f64 = 0.004_166_666_666_666_667;
 const MAX_DIST: usize = 3000;
 
@@ -197,6 +196,91 @@ fn get_image_dimensions() -> (usize, usize) {
 
     (dimensions.0 as usize, dimensions.1 as usize)
 }
+
+pub fn generate_image_gray() {
+    let (img_width, img_height) = get_image_dimensions();
+
+    let result = stencil(img_width, img_height);
+
+    let gradient = Arc::new(generate_gradient());
+
+    let (tx, rx) = mpsc::channel::<(usize, Vec<u32>)>();
+    let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
+    let mut reader_threads = vec![];
+
+    // receives finished results however it must wait for the correct ordered
+    // result to finish before it can write it
+    let writer_thread = thread::spawn(move || {
+        let file = File::create("map_generation/tests/single_tile_test.tiff").unwrap();
+        let w = BufWriter::new(file);
+
+        let mut encoder = encoder::TiffEncoder::new_big(w).unwrap();
+        let mut image = encoder
+            .new_image::<Gray32>(img_width as u32, img_height as u32)
+            .unwrap();
+        image
+            .encoder()
+            .write_tag(Tag::Artist, "Image-tiff")
+            .unwrap();
+
+        image.rows_per_strip(1).unwrap();
+
+        let mut strip_buffer = HashMap::new();
+        let mut needed_row = 0;
+
+        while let Ok((strip_row_number, strip)) = rx.recv() {
+            if needed_row != strip_row_number {
+                strip_buffer.insert(strip_row_number, strip);
+            } else {
+                image.write_strip(&strip).unwrap();
+                needed_row += 1;
+            }
+
+            while let Some(buffer_strip) = strip_buffer.get(&needed_row) {
+                image.write_strip(buffer_strip).unwrap();
+                needed_row += 1;
+            }
+        }
+        println!("I wrote {} lines", needed_row);
+        image.finish().unwrap();
+    });
+
+    for _ in 0..THREADS - 1 {
+        let cwi = current_working_index.clone();
+        let ltx = tx.clone();
+        let res = result.clone();
+        let grad = gradient.clone();
+
+        // Send results and what index it belongs to
+        reader_threads.push(thread::spawn(move || loop {
+            let index: usize;
+            if let Ok(mut i) = cwi.write() {
+                index = *i;
+                if index >= img_height {
+                    break;
+                }
+                i.add_assign(1);
+            } else {
+                panic!("POISONED LOCK")
+            }
+
+            let strip = res.read_row(index);
+
+            ltx.send((index, strip)).unwrap();
+        }));
+    }
+
+    for j in reader_threads {
+        j.join().unwrap();
+    }
+    // Give reader thread a chance to drain the channel before we drop it.
+    sleep(Duration::from_secs(2));
+    // Drop the sending channel such that the reader knows nothing else will be recived.
+    drop(tx);
+
+    writer_thread.join().unwrap();
+}
+
 pub fn generate_image() {
     let (img_width, img_height) = get_image_dimensions();
 
