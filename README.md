@@ -15,7 +15,7 @@ This demonstrates the result from the map_generation software, which creates a m
 The data can be downloaded using the sat_dl module. 
 This is currently work in progress and the output from the garstang model has not yet been calibrated or verified.
 
-![](./assets/uk_test.png)
+![](./assets/single_tile_test.tiff)
 
 How to run: (PS: Date must be formatted as dd.mm.yyyy)
 ```
@@ -24,7 +24,6 @@ cargo run --bin map_generation --release <start date> <end date>
 
 You must provide a starting date.
 If no end date is provided it will download from start date to current date.
-
 
 
 
