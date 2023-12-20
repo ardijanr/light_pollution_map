@@ -11,7 +11,7 @@
 Cargo.lock
 flamegraph.svg
 perf.data
-map_generation/cache/garstang_cache.json
+map_generation/cache
 map_generation/test*
 heaptrack*
 

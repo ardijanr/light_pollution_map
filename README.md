@@ -15,7 +15,7 @@ This demonstrates the result from the map_generation software, which creates a m
 The data can be downloaded using the sat_dl module. 
 This is currently work in progress and the output from the garstang model has not yet been calibrated or verified.
 
-![](./assets/single_tile_test.tiff)
+![](./assets/single_tile_test.png)
 
 How to run: (PS: Date must be formatted as dd.mm.yyyy)
 ```
