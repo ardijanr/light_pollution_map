@@ -58,7 +58,7 @@ pub fn stencil(img_width: usize, img_height: usize) -> Arc<ParMatrix> {
         .enumerate_pixels()
         .filter_map(|(x, y, c)| {
             //The value 10 was set to reduce noise
-            if c[0] == u16::MAX || c[0] < 5 {
+            if c[0] == u16::MAX || c[0] < 10 {
                 return None;
             }
             Some((x, y, c[0]))

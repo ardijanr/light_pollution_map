@@ -17,8 +17,8 @@ fn f_theta(_theta: f64) -> f64 {
     return 0.02;
 }
 
-#[cfg(build = "debug")]
-const DBG_LVL: u32 = 0;
+// #[cfg(build = "debug")]
+const DBG_LVL: u32 = 1;
 // LP is the total light output of the city
 // Distance in km between city and observer
 // H is height above sea in km
@@ -28,8 +28,14 @@ const DBG_LVL: u32 = 0;
 // this is a direction vector, meaning it is normalized so only its direction will be considered.
 //
 // The city has center at the origin and the observer has center at (distance,0,A)
-//
-pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_direction: Vector3D) -> f64 {
+// LP value
+pub fn garstang_1989_calc(
+    LP: f64,
+    mut distance: f64,
+    H: f64,
+    A: f64,
+    obs_direction: Vector3D,
+) -> f64 {
     if distance < 0.325 {
         distance = 0.325;
     }
@@ -52,8 +58,8 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
     let EH = E + H;
     let S: Point3D = (0., 0., -EH);
 
-    let dim_x = 1; // Split object into (dim * dim) points
-    let dim_y = 1; // Split object into (dim * dim) points
+    let dim_x = 30; // Split object into (dim * dim) points
+    let dim_y = 30; // Split object into (dim * dim) points
 
     //Logic:
     // C_x-R_x + (2R_x/dim)*index-1 because index moves from 0 to dim-1;
@@ -86,7 +92,7 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
 
     let mut sum = 0.0;
 
-    #[cfg(build = "debug")]
+    // #[cfg(build = "debug")]
     if DBG_LVL >= 1 {
         println!("");
         println!("----------------DEBUG-LEVEL-1--------------");
@@ -114,11 +120,10 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
             // Meaning its where the illumination of the line which is observed along starts.
             let Φ_start = angle_between_vectors((XO.0, 0., XO.2), (1., 0., 0.));
 
-
             // Starting distance from O to Q for the integration.
             let mut u_prev = distance * Φ_start.sin() / (π - Φ_start - θ).sin();
 
-            #[cfg(build = "debug")]
+            // #[cfg(build = "debug")]
             if DBG_LVL >= 2 {
                 let theta = rad_to_deg(θ);
                 let phi_start = rad_to_deg(Φ_start);
@@ -162,9 +167,10 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
                     break;
                 }
 
-                //LOCALLY SCOPED FUNCTIONS
-                let I_up =
-                    || LP / (2. * 4.) * (2. * G * (1. - F) * ψ.cos() + 0.554 * F * ψ.powi(4));
+                // This is directional, it describes the intensity towards a direction.
+                // We do 4 because our city is not circular, it is a square.
+                // No need to divide by shape, we are given source intensity, just ensure it is in lumen.
+                let I_up = || LP / (2. * π ) * (2. * G * (1. - F) * ψ.cos() + 0.554 * F * ψ.powi(4));
 
                 let p = |A_local: f64, angle: f64, c_: f64, dist_: f64| -> f64 {
                     c.powi(-1)
@@ -213,7 +219,7 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
                 let rest_d = exp(-a * h) * 11.11 * K;
                 let rest_e = f_theta(θ + Φ);
 
-                #[cfg(build = "debug")]
+                // #[cfg(build = "debug")]
                 if rest_d > 1000. {
                     println!("EXCESSIVE");
                 }
@@ -230,7 +236,7 @@ pub fn garstang_1989_calc(LP: f64, mut distance: f64, H: f64, A: f64,obs_directi
 
                 sum += new_contribution;
 
-                #[cfg(build = "debug")]
+                // #[cfg(build = "debug")]
                 if DBG_LVL == 3 {
                     let phi = rad_to_deg(Φ);
                     let XQO_ANGLE = rad_to_deg(XQO_angle);
