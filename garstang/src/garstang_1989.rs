@@ -92,7 +92,7 @@ pub fn garstang_1989_calc(
 
     let mut sum = 0.0;
 
-    // #[cfg(build = "debug")]
+    #[cfg(build = "debug")]
     if DBG_LVL >= 1 {
         println!("");
         println!("----------------DEBUG-LEVEL-1--------------");
@@ -170,7 +170,7 @@ pub fn garstang_1989_calc(
                 // This is directional, it describes the intensity towards a direction.
                 // We do 4 because our city is not circular, it is a square.
                 // No need to divide by shape, we are given source intensity, just ensure it is in lumen.
-                let I_up = || LP / (2. * π ) * (2. * G * (1. - F) * ψ.cos() + 0.554 * F * ψ.powi(4));
+                let I_up = || LP / (2. * π) * (2. * G * (1. - F) * ψ.cos() + 0.554 * F * ψ.powi(4));
 
                 let p = |A_local: f64, angle: f64, c_: f64, dist_: f64| -> f64 {
                     c.powi(-1)
@@ -219,7 +219,7 @@ pub fn garstang_1989_calc(
                 let rest_d = exp(-a * h) * 11.11 * K;
                 let rest_e = f_theta(θ + Φ);
 
-                // #[cfg(build = "debug")]
+                #[cfg(build = "debug")]
                 if rest_d > 1000. {
                     println!("EXCESSIVE");
                 }
@@ -236,7 +236,7 @@ pub fn garstang_1989_calc(
 
                 sum += new_contribution;
 
-                // #[cfg(build = "debug")]
+                #[cfg(build = "debug")]
                 if DBG_LVL == 3 {
                     let phi = rad_to_deg(Φ);
                     let XQO_ANGLE = rad_to_deg(XQO_angle);

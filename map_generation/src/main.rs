@@ -1,9 +1,11 @@
 pub mod common;
+pub mod gradient;
 // pub mod crawl;
 pub mod stencil;
 
 // pub use crawl::*;
 pub use stencil::*;
+pub use gradient::*;
 
 // use std::alloc::System;
 

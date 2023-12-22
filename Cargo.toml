@@ -4,7 +4,7 @@ name = "light_pollution_map"
 members = [
     "sat_dl",
     "garstang",
-    # "map_generation"
+    "map_generation"
 ]
 
 [profile.dev]
