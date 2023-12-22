@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
-use colorgrad::{Color, Gradient};
+use crate::{gradient, Gradient};
 
 pub type PixelIndex = (u32, u32);
 
@@ -127,62 +127,29 @@ impl ParMatrix {
 }
 
 pub fn generate_gradient() -> Gradient {
-    let black = (0, 0, 0);
-    // let gray = (60, 60, 60);
-    // let white = (255, 255, 255);
-    // let blue = (0, 0, 255);
-    // let blue_dark = (0, 0, 100);
-    // let green = (0, 255, 0);
-    // let green_dark = (0, 100, 0);
-    // let yellow = (255, 255, 0);
-    // let yellow = (255, 255, 100);
-    // let orange = (255, 150, 0);
-    // let red_dark = (150, 0, 0);
-    // let red = (255, 0, 0);
-    // let pink = (255, 150, 150);
-    // let dark_white = (180, 180, 180);
-    let white = (255, 255, 255);
+    let mut gradient = Gradient::new((0, 0, 0, 255), (0, 0, 0, 255));
+    let colors = [
+        (64, 64, 64, 255), //1.74
+        (128, 128, 128, 255),
+        (22, 54, 92, 255),
+        (54, 96, 146, 255),
+        (83, 141, 213, 255),
+        (79, 98, 40, 255),
+        (118, 147, 60, 255),
+        (255, 255, 0, 255),
+        (255, 192, 0, 255),
+        (255, 0, 0, 255),
+        (192, 80, 77, 255),
+        (218, 150, 148, 255),
+        (255, 255, 255, 255),
+    ];
 
-    let a = (110, 69, 0);
-    let b = (207, 103, 0);
-    let c = (255, 155, 56);
-    let d = (255, 155, 56);
-    let e = (250, 213, 112);
-    let f = (250, 213, 112);
+    let mut value = 1.74;
+    for i in 0..colors.len() {
+        value = 2. * value;
 
-    colorgrad::CustomGradient::new()
-        .colors(&[
-            Color::from(black),
-            Color::from(black),
-            Color::from(a),
-            Color::from(b),
-            Color::from(c),
-            Color::from(d),
-            Color::from(e),
-            Color::from(f),
-            // Color::from(gray),
-            // Color::from(blue_dark),
-            // Color::from(blue),
-            // Color::from(green_dark),
-            // Color::from(green),
-            // Color::from(orange),
-            // Color::from(yellow),
-            // Color::from(red_dark),
-            // Color::from(red),
-            // Color::from(pink),
-            // Color::from(pink),
-            Color::from(white),
-            //Original
-            // Color::from(black),
-            // Color::from(gray),
-            // Color::from(blue),
-            // Color::from(green),
-            // Color::from(yellow),
-            // Color::from(orange),
-            // Color::from(red),
-            // Color::from(dark_white),
-            // Color::from(white),
-        ])
-        .build()
-        .unwrap()
+        gradient.add_indexed_color((value * 100.) as u32, colors[i])
+    }
+
+    todo!()
 }

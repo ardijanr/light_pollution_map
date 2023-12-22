@@ -1,4 +1,3 @@
-use colorgrad::Gradient;
 use image::io::Reader;
 use image::{open, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use std::collections::HashMap;
@@ -19,9 +18,7 @@ use tiff::tags::Tag;
 use geo::point;
 use geo::prelude::*;
 
-use crate::common::{
-    generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
-};
+use crate::common::{falchi_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix};
 const THREADS: usize = 48;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
@@ -202,7 +199,7 @@ pub fn generate_image_gray() {
 
     let result = stencil(img_width, img_height);
 
-    let gradient = Arc::new(generate_gradient());
+    let gradient = Arc::new(falchi_gradient());
 
     let (tx, rx) = mpsc::channel::<(usize, Vec<u32>)>();
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
@@ -286,7 +283,7 @@ pub fn generate_image() {
 
     let result = stencil(img_width, img_height);
 
-    let gradient = Arc::new(generate_gradient());
+    let gradient = Arc::new(falchi_gradient());
 
     let (tx, rx) = mpsc::channel::<(usize, Vec<u8>)>();
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
