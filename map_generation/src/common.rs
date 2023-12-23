@@ -151,5 +151,5 @@ pub fn generate_gradient() -> Gradient {
         gradient.add_indexed_color((value * 100.) as u32, colors[i])
     }
 
-    todo!()
+    gradient
 }

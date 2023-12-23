@@ -18,7 +18,10 @@ use tiff::tags::Tag;
 use geo::point;
 use geo::prelude::*;
 
-use crate::common::{falchi_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix};
+use crate::common::{
+    generate_gradient, get_cache_from_file, length, write_cache_to_file, ParMatrix,
+};
+use crate::Gradient;
 const THREADS: usize = 48;
 // Size of entire world
 // const IMG_WIDTH: usize = 86400;
@@ -199,7 +202,7 @@ pub fn generate_image_gray() {
 
     let result = stencil(img_width, img_height);
 
-    let gradient = Arc::new(falchi_gradient());
+    let gradient = Arc::new(generate_gradient());
 
     let (tx, rx) = mpsc::channel::<(usize, Vec<u32>)>();
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
@@ -283,7 +286,7 @@ pub fn generate_image() {
 
     let result = stencil(img_width, img_height);
 
-    let gradient = Arc::new(falchi_gradient());
+    let gradient = Arc::new(generate_gradient());
 
     let (tx, rx) = mpsc::channel::<(usize, Vec<u8>)>();
     let current_working_index: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
@@ -368,11 +371,11 @@ fn convert_results_to_rgb(result: Vec<u32>, gradient: &Gradient) -> Vec<u8> {
 
     for i in result {
         let scaled = (i as f64).sqrt() / 355.;
-        let color = gradient.at(scaled).to_rgba8();
+        let color = gradient.sample_gradient(i);
 
-        output.push(color[0]);
-        output.push(color[1]);
-        output.push(color[2]);
+        output.push(color.0);
+        output.push(color.1);
+        output.push(color.2);
     }
 
     output
